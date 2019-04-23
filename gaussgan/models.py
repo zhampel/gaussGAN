@@ -43,35 +43,24 @@ class Generator(nn.Module):
     output is a vector from image space of dimension X_dim
     """
     # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
-    def __init__(self, latent_dim, x_shape, verbose=False):
+    def __init__(self, latent_dim, x_dim, verbose=False):
         super(Generator, self).__init__()
 
         print("Setting up Generator...\n")
         self.name = 'generator'
         self.latent_dim = latent_dim
-        self.x_shape = x_shape
-        self.ishape = (128, 7, 7)
-        self.iels = int(np.prod(self.ishape))
+        self.x_dim = x_dim
         self.verbose = verbose
         
         self.model = nn.Sequential(
             # Fully connected layers
             torch.nn.Linear(self.latent_dim, 1024),
-            nn.BatchNorm1d(1024),
+            #nn.BatchNorm1d(1024),
             torch.nn.ReLU(True),
-            torch.nn.Linear(1024, self.iels),
-            nn.BatchNorm1d(self.iels),
+            torch.nn.Linear(1024, x_dim),
+            #nn.BatchNorm1d(self.iels),
             torch.nn.ReLU(True),
         
-            # Reshape to 128 x (7x7)
-            Reshape(self.ishape),
-
-            # Upconvolution layers
-            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1, bias=True),
-            nn.BatchNorm2d(64),
-            torch.nn.ReLU(True),
-            
-            nn.ConvTranspose2d(64, 1, 4, stride=2, padding=1, bias=True),
             nn.Sigmoid()
         )
 
@@ -85,7 +74,7 @@ class Generator(nn.Module):
         #z = z.unsqueeze(2).unsqueeze(3)
         x_gen = self.model(z)
         # Reshape for output
-        x_gen = x_gen.view(x_gen.size(0), *self.x_shape)
+        #x_gen = x_gen.view(x_gen.size(0), *self.x_dim)
         return x_gen
 
 
@@ -95,31 +84,24 @@ class Discriminator(nn.Module):
     Output is a 1-dimensional value
     """            
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
-    def __init__(self, wass_metric=False, verbose=False):
+    def __init__(self, dim, wass_metric=False, verbose=False):
         super(Discriminator, self).__init__()
         
         self.name = 'discriminator'
-        self.channels = 1
-        self.cshape = (128, 5, 5)
-        self.iels = int(np.prod(self.cshape))
-        self.lshape = (self.iels,)
         self.wass = wass_metric
+        self.dim = dim
         self.verbose = verbose
         
         self.model = nn.Sequential(
-            # Convolutional layers
-            nn.Conv2d(self.channels, 64, 4, stride=2, bias=True),
+            nn.Linear(dim, 1024)
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, 4, stride=2, bias=True),
+            nn.Linear(1024, 512)
             nn.LeakyReLU(0.2, inplace=True),
-            
-            # Flatten
-            Reshape(self.lshape),
             
             # Fully connected layers
-            torch.nn.Linear(self.iels, 1024),
+            torch.nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Linear(1024, 1),
+            torch.nn.Linear(256, 1),
         )
         
         # If NOT using Wasserstein metric, final Sigmoid
