@@ -1,6 +1,10 @@
 # Ignore contents of virtual environment directory
 venv/*
 
+# Save no outputs
+*png
+*csv
+
 # Ignore saved run information: models, figures, images
 runs/*
 

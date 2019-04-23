@@ -71,15 +71,15 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 # Sample a random latent space vector
-def sample_z(shape=64, latent_dim=10, req_grad=False):
+def sample_z(samples=64, dims=10, mu=0.0, sigma=1.0, req_grad=False):
 
     Tensor = torch.cuda.FloatTensor
     
     # Sample noise as generator input, zn
-    zn = Variable(Tensor(np.random.normal(0, 1, (shape, latent_dim))), requires_grad=req_grad)
+    z = Variable(Tensor(np.random.normal(mu, sigma, (samples, dims))), requires_grad=req_grad)
 
     # Return components of latent space variable
-    return zn
+    return z
 
 
 def calc_gradient_penalty(netD, real_data, generated_data):
