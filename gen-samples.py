@@ -12,11 +12,13 @@ try:
     from matplotlib.colors import LogNorm
     from matplotlib.ticker import ScalarFormatter
 
+    import tables
+
     import pandas as pd
     
     import torch
     
-    from gaussgan.definitions import RUNS_DIR
+    from gaussgan.definitions import DATASETS_DIR
     from gaussgan.utils import sample_z
 except ImportError as e:
     print(e)
@@ -38,19 +40,29 @@ def gaussian(x, mu, sig):
 
 def main():
     global args
-    parser = argparse.ArgumentParser(description="Convolutional NN Training Script")
+    parser = argparse.ArgumentParser(description="Dataset generation script")
     parser.add_argument("-b", "--n_batches", dest="n_batches", default=100, type=int, help="Number of batches")
     parser.add_argument("-n", "--n_samples", dest="n_samples", default=1024, type=int, help="Number of samples")
+    parser.add_argument("-l", "--dim_list", dest="dim_list", nargs='+', default=[1, 2, 3, 10, 100], type=int, help="Number of samples")
     args = parser.parse_args()
+
+    # Make directory structure for this run
+    data_dir = os.path.join(DATASETS_DIR)
+    os.makedirs(data_dir, exist_ok=True)
+    print('\nDatasets to be saved in directory %s\n'%(data_dir))
+    atom = tables.Float64Atom()
 
     # Number of samples to take
     n_samples = args.n_samples
     n_batches = args.n_batches
     n_total = int(n_samples * n_batches)
-
+    
     # List of dimensions to test
-    dim_list = [1, 2, 3, 10, 50, 100, 1000]
+    dim_list = args.dim_list
     n_dims = len(dim_list) 
+
+    print("Generating data for dimensions: ", dim_list)
+    print("Each dataset will have %i samples."%n_total)
 
     # Define histograms for saving generated data
     redges = np.arange(0, 50, 0.25)
@@ -60,24 +72,46 @@ def main():
     # Lists for saving histograms
     rhist_list = []
 
-    # Loop through dimensions to run
+    # Loop through dimensions list
     for idx, dim in enumerate(dim_list):
 
         # Initialize histogram for dimensionality
         rhist, _ = np.histogram([], bins=redges)
 
+        # Prepare file, earray to save generated data
+        data_file_name = '%s/data_dim%i.h5'%(data_dir, dim)
+        data_file = tables.open_file(data_file_name, mode='w')
+        atom = tables.Float64Atom()
+        #array_c = data_file.create_carray(data_file.root, 'data', atom, (n_samples, dim))
+        array_c = data_file.create_earray(data_file.root, 'data', atom, (0, dim))
+
         # Run through number of batches, getting n_samples each
         for ibatch in range(n_batches):
+            # Random set of n_samples
             z = sample_z(samples=n_samples, dims=dim, mu=0.0, sigma=1.0)
+            # Calculate squared magnitude of vector, follows chi2 dist
             r2 = torch.sum(z * z, dim=1)
+            # Magnitude of vector
             r = torch.sqrt(r2)
-            # Add to histogram
-            rhist += np.histogram(r.cpu().data.numpy(), bins=redges)[0]
 
+            # Convert to numpy arrays
+            r_numpy = r.cpu().data.numpy()
+            z_numpy = z.cpu().data.numpy()
+
+            # Add to histogram
+            rhist += np.histogram(r_numpy, bins=redges)[0]
+            #rhist += np.histogram(r.cpu().data.numpy(), bins=redges)[0]
+            # Add samples dataset
+            array_c.append(z_numpy)
+ 
         # Save histogram to list
         rhist_list.append(rhist)
 
+        # Close dataset file
+        data_file.close()
 
+
+    ## Generate figures
     # Euclidean distance distributions
     ylab = '$P(r)$'
     title = 'Radius Distributions of Multi-$d$ Gaussian $x \in \mathcal{R}^d$'
@@ -141,7 +175,7 @@ def main():
     ax1 = fig.add_subplot(111)
     # Mean distance
     ax1.plot(lin_dims, rmean_ana, label=r'$\sqrt{d}$')
-    ax1.errorbar(dim_list, rmean_fit, yerr=rmean_fit_err, label=r'Fit', fmt='o', markersize=8)
+    ax1.errorbar(dim_list, rmean_fit, yerr=rmean_fit_err, label=r'Fit', fmt='s', markersize=8)
     ax1.set_xlabel(r'Dimensionality, $d$')
     ax1.set_ylim(0, 1.5*rmean_ana[-1])
     ax1.set_xlim(0.9, 1.1*lin_dims[-1])
