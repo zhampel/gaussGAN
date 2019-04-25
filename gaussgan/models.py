@@ -52,12 +52,15 @@ class Generator(nn.Module):
         
         self.model = nn.Sequential(
             # Fully connected layers
-            torch.nn.Linear(self.latent_dim, 1024),
-            #nn.BatchNorm1d(1024),
+            torch.nn.Linear(self.latent_dim, 512),
+            nn.BatchNorm1d(512),
             torch.nn.ReLU(True),
-            torch.nn.Linear(1024, x_dim),
-            #nn.BatchNorm1d(self.iels),
+
+            torch.nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
             torch.nn.ReLU(True),
+            
+            torch.nn.Linear(256, x_dim),
         
             nn.Sigmoid()
         )

@@ -8,6 +8,8 @@ try:
     import matplotlib
     import matplotlib.pyplot as plt
 
+    from scipy import stats
+
     import tables
 
     import pandas as pd
@@ -29,8 +31,8 @@ try:
     from gaussgan.definitions import DATASETS_DIR, RUNS_DIR
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
-    from gaussgan.utils import tlog, save_model, calc_gradient_penalty, sample_z, cross_entropy
-    from gaussgan.plots import plot_train_loss
+    from gaussgan.utils import tlog, save_model, enorm, calc_gradient_penalty, sample_z
+    from gaussgan.plots import plot_train_loss, compare_histograms
 except ImportError as e:
     print(e)
     raise ImportError
@@ -38,15 +40,13 @@ except ImportError as e:
 def main():
     global args
     parser = argparse.ArgumentParser(description="GAN training script")
-    #parser.add_argument("-r", "--run_name", dest="run_name", default='gaussgan', help="Name of training run")
     parser.add_argument("-d", "--dim", dest="dimensions", default=1, type=int, help="Number of dimensions")
-    parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=200, type=int, help="Number of epochs")
+    parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=20, type=int, help="Number of epochs")
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
-    #parser.add_argument("-l", "--dim_list", dest="dim_list", nargs='+', default=[1, 2, 3, 10, 100], type=int, help="Number of samples")
     args = parser.parse_args()
 
     dim = args.dimensions
-    run_name = 'dim%i'%dim#args.run_name
+    run_name = 'dim%i'%dim
 
     # Make directory structure for this run
     run_dir = os.path.join(RUNS_DIR, run_name)
@@ -81,6 +81,7 @@ def main():
     latent_dim = 30
    
     # Wasserstein metric flag
+    #wass_metric = False
     wass_metric = True
     
     x_shape = dim
@@ -108,6 +109,28 @@ def main():
     
     # Configure training data loader
     dataloader = get_dataloader(dataset=dataset, batch_size=batch_size)
+
+    # Test dataset
+    n_test_samples = 1000
+    test_data = sample_z(samples=n_test_samples, dims=dim, mu=0.0, sigma=1.0)
+    r_test = enorm(test_data)
+    # Theoretical dataset
+    chi2_rng = np.random.chisquare(dim, n_test_samples)
+    chi2_sqrt = np.sqrt(chi2_rng)
+
+    # K-S Test
+    dval, pval = stats.ks_2samp(r_test, chi2_sqrt)
+    print("Comparing theoretical chi2 dist (sqrt) to sampled distribution:")
+    print("P-Value: %.04f\tDist-Value: %.04f"%(dval, pval))
+
+    # Bin distributions
+    redges = np.linspace(0, 1.2*int(np.max(r_test)), 20)
+    #redges = np.arange(0, 2*np.ceil(np.sqrt(dim)), 0.25)
+    rcents = (redges[1:]-redges[:-1])/2 + redges[0:-1]
+    test_hist, _ = np.histogram(r_test, bins=redges)
+    chi_hist, _ = np.histogram(chi2_sqrt, bins=redges)
+    test_hist = test_hist / float(n_test_samples)
+    chi_hist = chi_hist / float(n_test_samples)
    
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(b1, b2), weight_decay=decay)
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
@@ -118,6 +141,8 @@ def main():
     # ----------
     g_l = []
     d_l = []
+    dval_i = []
+    pval_i = []
     
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
@@ -141,7 +166,7 @@ def main():
             optimizer_G.zero_grad()
             
             # Sample random latent variables
-            z_latent = sample_z(samples=n_samples, dims=dim, mu=0.0, sigma=1.0)
+            z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=1.0)
 
             # Generate a batch of samples
             gen_samples = generator(z_latent)
@@ -151,18 +176,28 @@ def main():
             D_real = discriminator(real_samples)
             
             # Step for Generator & Encoder, n_skip_iter times less than for discriminator
-            if (i % n_skip_iter == 0):
+            # Check requested metric
+            if wass_metric:
+                # Wasserstein GAN loss
+                g_loss = torch.mean(D_gen)
+            else:
+                # Vanilla GAN loss
+                g_loss = -torch.mean(tlog(D_gen))
     
-                # Check requested metric
-                if wass_metric:
-                    # Wasserstein GAN loss
-                    g_loss = torch.mean(D_gen) + betan * zn_loss + betac * zc_loss
-                else:
-                    # Vanilla GAN loss
-                    g_loss = -torch.mean(tlog(D_gen)) + betan * zn_loss + betac * zc_loss
+            g_loss.backward(retain_graph=True)
+            optimizer_G.step()
+            #if (i % n_skip_iter == 0):
     
-                g_loss.backward(retain_graph=True)
-                optimizer_G.step()
+            #    # Check requested metric
+            #    if wass_metric:
+            #        # Wasserstein GAN loss
+            #        g_loss = torch.mean(D_gen)
+            #    else:
+            #        # Vanilla GAN loss
+            #        g_loss = -torch.mean(tlog(D_gen))
+    
+            #    g_loss.backward(retain_graph=True)
+            #    optimizer_G.step()
 
             # ---------------------
             #  Train Discriminator
@@ -194,57 +229,75 @@ def main():
         generator.eval()
 
         # Set number of examples for cycle calcs
-        n_sqrt_samp = 5
-        n_samp = n_sqrt_samp * n_sqrt_samp
+        n_samp = 1000 
 
 
-
-        ## Cycle through randomly sampled encoding -> generator -> encoder
-        z_samp sample_z(shape=n_samp latent_dim=latent_dim)
         # Generate sample instances
+        z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=1.0)
         gen_samples_samp = generator(z_samp)
-      
-        # Save cycled and generated examples!
-        z = sample_z(samples=n_samples, dims=dim, mu=0.0, sigma=1.0)
+        r_gen_samps = enorm(gen_samples_samp)
+        # Bin samples into normalized histogram
+        gen_hist, _ = np.histogram(r_gen_samps, bins=redges)
+        gen_hist = gen_hist / float(n_samp)
 
+        # Plot distributions
+        figname = '%s/hist_epoch%i.png'%(samples_dir, epoch)
+        compare_histograms(hist_list=[test_hist, gen_hist],
+                           centers=[rcents, rcents],
+                           labels=['Parent', 'Generated'],
+                           ylims=[0, 1.0, False],
+                           figname=figname)
+      
+        # K-S test test btw test data and generated samples (r distribution)
+        dval, pval = stats.ks_2samp(r_test, r_gen_samps)
+        
+        dval_i.append(dval)
+        pval_i.append(pval)
 
         print ("[Epoch %d/%d] \n"\
-               "\tModel Losses: [D: %f] [GE: %f]" % (epoch, 
-                                                     n_epochs, 
-                                                     d_loss.item(),
-                                                     g_loss.item())
+               "\tModel Losses: [D: %f] [G: %f] [p-val: %.02e]" % (epoch, 
+                                                                   n_epochs, 
+                                                                   d_loss.item(),
+                                                                   g_loss.item(),
+                                                                   pval)
               )
         
 
-    ## Save training results
-    #train_df = pd.DataFrame({
-    #                         'n_epochs' : n_epochs,
-    #                         'learning_rate' : lr,
-    #                         'beta_1' : b1,
-    #                         'beta_2' : b2,
-    #                         'weight_decay' : decay,
-    #                         'n_skip_iter' : n_skip_iter,
-    #                         'latent_dim' : latent_dim,
-    #                         'n_classes' : n_c,
-    #                         'beta_n' : betan,
-    #                         'beta_c' : betac,
-    #                         'wass_metric' : wass_metric,
-    #                         'gen_loss' : ['G', g_l],
-    #                         'disc_loss' : ['D', d_l],
-    #                        })
+    # Save training results
+    train_df = pd.DataFrame({
+                             'dim' : dim,
+                             'n_epochs' : n_epochs,
+                             'learning_rate' : lr,
+                             'beta_1' : b1,
+                             'beta_2' : b2,
+                             'weight_decay' : decay,
+                             'n_skip_iter' : n_skip_iter,
+                             'latent_dim' : latent_dim,
+                             'wass_metric' : wass_metric,
+                             'gen_loss' : ['G', g_l],
+                             'disc_loss' : ['D', d_l],
+                             'pvalues' : ['pvals', pval_i],
+                             'dvalues' : ['dvals', dval_i],
+                            })
 
-    #train_df.to_csv('%s/training_details.csv'%(run_dir))
+    train_df.to_csv('%s/training_details.csv'%(run_dir))
 
 
     # Plot some training results
     plot_train_loss(df=train_df,
-                    arr_list=['gen_enc_loss', 'disc_loss'],
+                    arr_list=['gen_loss', 'disc_loss'],
                     figname='%s/training_model_losses.png'%(run_dir)
+                    )
+
+    # Plot some training results
+    plot_train_loss(df=train_df,
+                    arr_list=['pvalues'],
+                    figname='%s/training_pvalues.png'%(run_dir)
                     )
 
 
     # Save current state of trained models
-    model_list = [discriminator, encoder, generator]
+    model_list = [discriminator, generator]
     save_model(models=model_list, out_dir=models_dir)
 
 

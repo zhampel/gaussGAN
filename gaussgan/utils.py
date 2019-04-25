@@ -29,10 +29,22 @@ def softmax(x):
     return F.softmax(x, dim=1)
 
 
-# Cross Entropy loss with two vector inputs
-def cross_entropy(pred, soft_targets):
-    log_softmax_pred = torch.nn.functional.log_softmax(pred, dim=1)
-    return torch.mean( torch.sum(- soft_targets * log_softmax_pred, 1) )
+# Euclidean norm
+def enorm(data=None, cpu=True):
+    """
+    Provided a batch of vectors,
+    return Euclidean norms
+    """
+    # Magnitude squared of vectors
+    r2 = torch.sum(data * data, dim=1)
+    # Vector magnitudes
+    r = torch.sqrt(r2)
+
+    # Return numpy array as default
+    if cpu:
+        r = r.cpu().data.numpy()
+
+    return r
 
 
 # Save a provided model to file
@@ -89,7 +101,7 @@ def calc_gradient_penalty(netD, real_data, generated_data):
     b_size = real_data.size()[0]
 
     # Calculate interpolation
-    alpha = torch.rand(b_size, 1, 1, 1)
+    alpha = torch.rand(b_size, 1)
     alpha = alpha.expand_as(real_data)
     alpha = alpha.cuda()
     

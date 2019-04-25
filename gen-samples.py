@@ -19,7 +19,8 @@ try:
     import torch
     
     from gaussgan.definitions import DATASETS_DIR
-    from gaussgan.utils import sample_z
+    from gaussgan.utils import sample_z, enorm
+    from gaussgan.plots import plot_histogram, compare_histograms
 except ImportError as e:
     print(e)
     raise ImportError
@@ -67,7 +68,6 @@ def main():
     # Define histograms for saving generated data
     redges = np.arange(0, 50, 0.25)
     rcents = (redges[1:]-redges[:-1])/2 + redges[0:-1]
-    inv_w = 1 / float(n_total)
    
     # Lists for saving histograms
     rhist_list = []
@@ -89,18 +89,12 @@ def main():
         for ibatch in range(n_batches):
             # Random set of n_samples
             z = sample_z(samples=n_samples, dims=dim, mu=0.0, sigma=1.0)
-            # Calculate squared magnitude of vector, follows chi2 dist
-            r2 = torch.sum(z * z, dim=1)
-            # Magnitude of vector
-            r = torch.sqrt(r2)
-
-            # Convert to numpy arrays
-            r_numpy = r.cpu().data.numpy()
             z_numpy = z.cpu().data.numpy()
+            # Calculate magnitude of vector, follows chi dist
+            r_numpy = enorm(z)
 
-            # Add to histogram
+            # Add norm entry to histogram
             rhist += np.histogram(r_numpy, bins=redges)[0]
-            #rhist += np.histogram(r.cpu().data.numpy(), bins=redges)[0]
             # Add samples dataset
             array_c.append(z_numpy)
  
@@ -113,33 +107,28 @@ def main():
 
     ## Generate figures
     # Euclidean distance distributions
-    ylab = '$P(r)$'
-    title = 'Radius Distributions of Multi-$d$ Gaussian $x \in \mathcal{R}^d$'
+    norm_histlist = [rhist/float(n_total) for rhist in rhist_list]
+    # Normal y-axis
+    compare_histograms(hist_list=norm_histlist,
+                       centers=[rcents]*len(rhist_list),
+                       labels=dim_list,
+                       ylims=[0.0, 0.2, False],
+                       figname='g_distribution.png')
+    
+    # Logarithmic y-axis
+    compare_histograms(hist_list=norm_histlist,
+                       centers=[rcents]*len(rhist_list),
+                       labels=dim_list,
+                       ylims=[0.0001, 0.2, True],
+                       figname='g_distribution_log.png')
 
-    fig = plt.figure(figsize=(9,6))
-    mpl.rc("font", family="serif")
-    ax = fig.add_subplot(111)
-    ax.set_xlim(redges[0], redges[-1])
-    ymax = -1.0
-
+    # Plot each distribution separately
     for idx, dim in enumerate(dim_list):
-        rlab = '$%i$'%dim
-        # Normalize histogram
-        rhist = rhist_list[idx] / float(n_total)
-        # Draw dist with steps
-        ax.step(rcents, rhist, linewidth=1.5, label=rlab)
-        ymax = max(ymax, np.float(np.max(rhist)))
-
-    ax.set_xlabel(r'Radius, $r = |x|_{2}$')
-    #ax.set_ylim(1/float(n_total), 1.1*ymax)
-    ax.set_ylim(0, 1.1*ymax)
-    ax.set_ylabel(r'%s'%ylab)
-    ax.set_title(r'%s'%title)
-    plt.legend(title=r'Dimension, $d$', loc='best', numpoints=1, ncol=2)
-    #ax.set_yscale('log', nonposy='clip')
-    fig.tight_layout()
-    fig.savefig('g_distribution.png')
-
+        figname = '%s/hist_dim%i.png'%(data_dir, dim)
+        plot_histogram(hist=rhist_list[idx]/float(n_total),
+                       centers=rcents,
+                       label=r'$d=%i$'%dim,
+                       figname=figname)
 
     # Gaussian fits to distributions
     rmean_fit = np.zeros((len(dim_list)))
