@@ -5,8 +5,9 @@ venv/*
 *png
 *csv
 
-# Ignore saved run information: models, figures, images
+# Ignore saved run information: models, figures, datasets
 runs/*
+datasets/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
