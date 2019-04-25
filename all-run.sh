@@ -16,6 +16,6 @@ python gen-samples.py -n ${n_samples} -b ${n_batches} -d ${dim_list[@]}
 n_epochs=1000
 
 for dim in ${dim_list[@]}; do
-    echo $dim $epochs
+    echo "Running Dimension ", $dim
     python train.py -d ${dim} -n ${n_epochs}
 done
