@@ -63,8 +63,6 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             
             torch.nn.Linear(256, x_dim),
-        
-            nn.Sigmoid()
         )
 
         initialize_weights(self)

@@ -64,13 +64,10 @@ def main():
     dataset = GaussDataset(file_name=data_file_name)
     print("Getting dataset from %s"%data_file_name)
     print("Dataset size: ", dataset.__len__())
-    #atom = tables.Float64Atom()
-    #array_c = f.create_earray(f.root, 'data', atom, (0, ROW_SIZE))
 
     # Training details
     n_epochs = args.n_epochs
     batch_size = args.batch_size
-    test_batch_size = 5000
     lr = 1e-4
     b1 = 0.5
     b2 = 0.9 #99
@@ -147,7 +144,6 @@ def main():
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
     for epoch in range(n_epochs):
-        #for i, (samples, itruth_label) in enumerate(dataloader):
         for i, samples in enumerate(dataloader):
            
             # Ensure generator is trainable
@@ -176,28 +172,18 @@ def main():
             D_real = discriminator(real_samples)
             
             # Step for Generator & Encoder, n_skip_iter times less than for discriminator
-            # Check requested metric
-            if wass_metric:
-                # Wasserstein GAN loss
-                g_loss = torch.mean(D_gen)
-            else:
-                # Vanilla GAN loss
-                g_loss = -torch.mean(tlog(D_gen))
+            if (i % n_skip_iter == 0):
     
-            g_loss.backward(retain_graph=True)
-            optimizer_G.step()
-            #if (i % n_skip_iter == 0):
+                # Check requested metric
+                if wass_metric:
+                    # Wasserstein GAN loss
+                    g_loss = torch.mean(D_gen)
+                else:
+                    # Vanilla GAN loss
+                    g_loss = -torch.mean(tlog(D_gen))
     
-            #    # Check requested metric
-            #    if wass_metric:
-            #        # Wasserstein GAN loss
-            #        g_loss = torch.mean(D_gen)
-            #    else:
-            #        # Vanilla GAN loss
-            #        g_loss = -torch.mean(tlog(D_gen))
-    
-            #    g_loss.backward(retain_graph=True)
-            #    optimizer_G.step()
+                g_loss.backward(retain_graph=True)
+                optimizer_G.step()
 
             # ---------------------
             #  Train Discriminator

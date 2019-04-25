@@ -29,6 +29,14 @@ def softmax(x):
     return F.softmax(x, dim=1)
 
 
+# Gaussian function
+def gaussian(x, mu, sig):
+    """
+    Gaussian function
+    """
+    return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+
+
 # Euclidean norm
 def enorm(data=None, cpu=True):
     """

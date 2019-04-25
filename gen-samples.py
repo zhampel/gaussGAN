@@ -19,7 +19,7 @@ try:
     import torch
     
     from gaussgan.definitions import DATASETS_DIR
-    from gaussgan.utils import sample_z, enorm
+    from gaussgan.utils import gaussian, sample_z, enorm
     from gaussgan.plots import plot_histogram, compare_histograms
 except ImportError as e:
     print(e)
@@ -30,13 +30,6 @@ except ImportError as e:
 colors = ["blue", "red", "green", "black"]
 colorsmall = ["b", "r", "g", "k"]
 styles = ["-", "--", "-."]
-
-
-def gaussian(x, mu, sig):
-    """
-    Gaussian function
-    """
-    return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 
 def main():
@@ -82,7 +75,6 @@ def main():
         data_file_name = '%s/data_dim%i.h5'%(data_dir, dim)
         data_file = tables.open_file(data_file_name, mode='w')
         atom = tables.Float64Atom()
-        #array_c = data_file.create_carray(data_file.root, 'data', atom, (n_samples, dim))
         array_c = data_file.create_earray(data_file.root, 'data', atom, (0, dim))
 
         # Run through number of batches, getting n_samples each
@@ -141,7 +133,6 @@ def main():
         analytic_mean = np.sqrt(dim)
         # Normalixze histogram
         rhist = rhist_list[idx] / float(n_total)
-        #rhist_unc = np.sqrt(rhist_list[idx]) / float(n_total)
         # Perform gaussian fit
         popt, pcov = curve_fit(gaussian, rcents, rhist, bounds=(0, [2*analytic_mean, analytic_mean]))
         # Calculate uncertainties from fit
