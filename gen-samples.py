@@ -44,7 +44,7 @@ def main():
     parser = argparse.ArgumentParser(description="Dataset generation script")
     parser.add_argument("-b", "--n_batches", dest="n_batches", default=100, type=int, help="Number of batches")
     parser.add_argument("-n", "--n_samples", dest="n_samples", default=1024, type=int, help="Number of samples")
-    parser.add_argument("-l", "--dim_list", dest="dim_list", nargs='+', default=[1, 2, 3, 10, 100], type=int, help="Number of samples")
+    parser.add_argument("-d", "--dim_list", dest="dim_list", nargs='+', default=[1, 2, 3, 10, 100], type=int, help="Number of samples")
     args = parser.parse_args()
 
     # Make directory structure for this run
