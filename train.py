@@ -241,7 +241,7 @@ def main():
         gen_hist = gen_hist / float(n_samp)
 
         # Plot distributions
-        figname = '%s/hist_epoch%i.png'%(samples_dir, epoch)
+        figname = '%s/hist_epoch%05i.png'%(samples_dir, epoch)
         compare_histograms(hist_list=[test_hist, gen_hist],
                            centers=[rcents, rcents],
                            labels=['Parent', 'Generated'],

@@ -54,11 +54,13 @@ class Generator(nn.Module):
             # Fully connected layers
             torch.nn.Linear(self.latent_dim, 512),
             nn.BatchNorm1d(512),
-            torch.nn.ReLU(True),
+            #torch.nn.ReLU(True),
+            nn.LeakyReLU(0.2, inplace=True),
 
             torch.nn.Linear(512, 256),
             nn.BatchNorm1d(256),
-            torch.nn.ReLU(True),
+            #torch.nn.ReLU(True),
+            nn.LeakyReLU(0.2, inplace=True),
             
             torch.nn.Linear(256, x_dim),
         
