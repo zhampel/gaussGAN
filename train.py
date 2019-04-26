@@ -76,6 +76,7 @@ def main():
 
     # Latent space info
     latent_dim = 30
+    latent_sigma = 0.01
    
     # Wasserstein metric flag
     #wass_metric = False
@@ -162,7 +163,7 @@ def main():
             optimizer_G.zero_grad()
             
             # Sample random latent variables
-            z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=1.0)
+            z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=latent_sigma)
 
             # Generate a batch of samples
             gen_samples = generator(z_latent)
@@ -219,7 +220,7 @@ def main():
 
 
         # Generate sample instances
-        z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=1.0)
+        z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=latent_sigma)
         gen_samples_samp = generator(z_samp)
         r_gen_samps = enorm(gen_samples_samp)
         # Bin samples into normalized histogram
@@ -259,6 +260,7 @@ def main():
                              'weight_decay' : decay,
                              'n_skip_iter' : n_skip_iter,
                              'latent_dim' : latent_dim,
+                             'latent_sigma' : latent_sigma,
                              'wass_metric' : wass_metric,
                              'gen_loss' : ['G', g_l],
                              'disc_loss' : ['D', d_l],

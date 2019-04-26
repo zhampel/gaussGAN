@@ -185,7 +185,7 @@ def main():
                              'rsigma_fit_err' : rsigma_fit_err,
                             })
 
-    train_df.to_csv('fit_details.csv')
+    train_df.to_csv('data_details.csv')
 
 
 if __name__ == "__main__":
