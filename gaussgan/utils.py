@@ -102,6 +102,19 @@ def sample_z(samples=64, dims=10, mu=0.0, sigma=1.0, req_grad=False):
     return z
 
 
+# Sample a random latent space vector
+def sample_zu(samples=64, dims=10, req_grad=False):
+
+    Tensor = torch.cuda.FloatTensor
+    
+    # Sample noise as generator input, zn
+    z = Variable(Tensor(np.random.random((samples, dims))), requires_grad=req_grad) 
+    #z = Variable(Tensor(np.random.normal(mu, sigma, (samples, dims))), requires_grad=req_grad)
+
+    # Return components of latent space variable
+    return z
+
+
 def calc_gradient_penalty(netD, real_data, generated_data):
     # GP strength
     LAMBDA = 10

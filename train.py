@@ -6,6 +6,7 @@ try:
     import numpy as np
 
     import matplotlib
+    import matplotlib as mpl
     import matplotlib.pyplot as plt
 
     from scipy import stats
@@ -31,7 +32,7 @@ try:
     from gaussgan.definitions import DATASETS_DIR, RUNS_DIR
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
-    from gaussgan.utils import tlog, save_model, enorm, calc_gradient_penalty, sample_z
+    from gaussgan.utils import tlog, save_model, enorm, calc_gradient_penalty, sample_z, sample_zu
     from gaussgan.plots import plot_train_loss, compare_histograms
 except ImportError as e:
     print(e)
@@ -112,6 +113,20 @@ def main():
     n_test_samples = 1000
     test_data = sample_z(samples=n_test_samples, dims=dim, mu=0.0, sigma=1.0)
     r_test = enorm(test_data)
+
+    # Prepare test set component histograms
+    test_hist_list = [None] * dim
+    xedges = np.arange(-4, 4, 0.5)
+    xcents = (xedges[1:]-xedges[:-1])/2 + xedges[0:-1]
+    pdims = np.ceil(np.sqrt(dim))
+    test_data_numpy = test_data.cpu().data.numpy()
+
+    for idim in range(dim):
+        # Distribution for each dimension component
+        xhist = np.histogram(test_data_numpy[:, idim], bins=xedges)[0]
+        xhist = xhist / np.sum(xhist)
+        test_hist_list[idim] = xhist
+
     # Theoretical dataset
     chi2_rng = np.random.chisquare(dim, n_test_samples)
     chi2_sqrt = np.sqrt(chi2_rng)
@@ -123,7 +138,6 @@ def main():
 
     # Bin distributions
     redges = np.linspace(0, 1.2*int(np.max(r_test)), 20)
-    #redges = np.arange(0, 2*np.ceil(np.sqrt(dim)), 0.25)
     rcents = (redges[1:]-redges[:-1])/2 + redges[0:-1]
     test_hist, _ = np.histogram(r_test, bins=redges)
     chi_hist, _ = np.histogram(chi2_sqrt, bins=redges)
@@ -163,7 +177,8 @@ def main():
             optimizer_G.zero_grad()
             
             # Sample random latent variables
-            z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=latent_sigma)
+            #z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=latent_sigma)
+            z_latent = sample_zu(samples=real_samples.size()[0], dims=latent_dim)
 
             # Generate a batch of samples
             gen_samples = generator(z_latent)
@@ -220,15 +235,69 @@ def main():
 
 
         # Generate sample instances
-        z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=latent_sigma)
+        z_samp = sample_zu(samples=n_samp, dims=latent_dim)
+        #z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=latent_sigma)
         gen_samples_samp = generator(z_samp)
+
+
+        # Compare true/gen distributions for each component
+        gen_data_numpy = gen_samples_samp.cpu().data.numpy()
+
+        ks_d_list = []
+        ks_p_list = []
+
+        figname = '%s/comp_hist_epoch%05i.png'%(samples_dir, epoch)
+        fig = plt.figure(figsize=(18,12))
+        mpl.rc("font", family="serif")
+        for idim in range(dim):
+            # Initialize histogram for each dimension component
+            xhist = np.histogram(gen_data_numpy[:, idim], bins=xedges)[0]
+            xhist = xhist / np.sum(xhist)
+            
+            iax = fig.add_subplot(pdims, pdims, idim + 1)
+            iax.step(xcents, test_hist_list[idim], linewidth=1.5, c='k')
+            iax.step(xcents, xhist, linewidth=1.5, c='r')
+            iax.grid()
+            iax.set_xlim(-4, 4)
+            iax.set_ylim(0.0, 0.5)
+            #iax.set_ylim(0.01, 0.75)
+            #plt.yscale('log')
+            plt.axis('off')
+            
+            dval, pval = stats.ks_2samp(gen_data_numpy[:, idim], test_data_numpy[:, idim])
+            ks_d_list.append(dval)
+            ks_p_list.append(pval)
+        
+        plt.tight_layout()
+        fig.savefig('%s'%figname)
+   
+        # Save results of KS test to figure
+        figname = '%s/ks_epoch%05i.png'%(samples_dir, epoch)
+        fig = plt.figure(figsize=(9,6))
+        mpl.rc("font", family="serif")
+        axd = fig.add_subplot(111)
+        # D-Values
+        axd.step(np.arange(0, dim, 1), ks_d_list)
+        axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$')
+        axd.set_xlabel(r'Vector Component')
+        axd.set_title(r'Results of KS Test for Each Component')
+        # P-Values
+        axp = axd.twinx()
+        axp.step(np.arange(0, dim, 1), ks_p_list, c='r')
+        axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
+        axp.tick_params('y', colors='r')
+        fig.tight_layout()
+        fig.savefig(figname)
+
+
+        # Euclidean norm calc and comparison
         r_gen_samps = enorm(gen_samples_samp)
         # Bin samples into normalized histogram
         gen_hist, _ = np.histogram(r_gen_samps, bins=redges)
         gen_hist = gen_hist / float(n_samp)
 
-        # Plot distributions
-        figname = '%s/hist_epoch%05i.png'%(samples_dir, epoch)
+        # Plot norm distributions
+        figname = '%s/rhist_epoch%05i.png'%(samples_dir, epoch)
         compare_histograms(hist_list=[test_hist, gen_hist],
                            centers=[rcents, rcents],
                            labels=['Parent', 'Generated'],
