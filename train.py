@@ -32,7 +32,7 @@ try:
     from gaussgan.definitions import DATASETS_DIR, RUNS_DIR
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
-    from gaussgan.utils import tlog, save_model, enorm, calc_gradient_penalty, sample_z, sample_zu
+    from gaussgan.utils import save_model, enorm, calc_gradient_penalty, sample_z, sample_zu
     from gaussgan.plots import plot_train_loss, compare_histograms
 except ImportError as e:
     print(e)
@@ -44,10 +44,12 @@ def main():
     parser.add_argument("-d", "--dim", dest="dimensions", default=1, type=int, help="Number of dimensions")
     parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=20, type=int, help="Number of epochs")
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
+    parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     args = parser.parse_args()
 
     dim = args.dimensions
     run_name = 'dim%i'%dim
+    device_id = args.gpu
 
     # Make directory structure for this run
     run_dir = os.path.join(RUNS_DIR, run_name)
@@ -80,13 +82,14 @@ def main():
     latent_sigma = 0.01
    
     # Wasserstein metric flag
-    #wass_metric = False
-    wass_metric = True
+    #wass_metric = True
+    wass_metric = False
     
     x_shape = dim
     
     cuda = True if torch.cuda.is_available() else False
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    torch.cuda.set_device(device_id)
 
     # Loss function
     bce_loss = torch.nn.BCELoss()
@@ -177,8 +180,8 @@ def main():
             optimizer_G.zero_grad()
             
             # Sample random latent variables
-            #z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=latent_sigma)
-            z_latent = sample_zu(samples=real_samples.size()[0], dims=latent_dim)
+            z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=latent_sigma)
+            #z_latent = sample_zu(samples=real_samples.size()[0], dims=latent_dim)
 
             # Generate a batch of samples
             gen_samples = generator(z_latent)
@@ -196,7 +199,8 @@ def main():
                     g_loss = torch.mean(D_gen)
                 else:
                     # Vanilla GAN loss
-                    g_loss = -torch.mean(tlog(D_gen))
+                    valid = Variable(Tensor(gen_samples.size(0), 1).fill_(1.0), requires_grad=False)
+                    g_loss = bce_loss(D_gen, valid)
     
                 g_loss.backward(retain_graph=True)
                 optimizer_G.step()
@@ -217,7 +221,10 @@ def main():
                 
             else:
                 # Vanilla GAN loss
-                d_loss = -torch.mean(tlog(D_real) - tlog(1 - D_gen))
+                fake = Variable(Tensor(gen_samples.size(0), 1).fill_(0.0), requires_grad=False)
+                real_loss = bce_loss(D_real, valid)
+                fake_loss = bce_loss(D_gen, fake)
+                d_loss = (real_loss + fake_loss) / 2
     
             d_loss.backward()
             optimizer_D.step()
@@ -235,8 +242,8 @@ def main():
 
 
         # Generate sample instances
-        z_samp = sample_zu(samples=n_samp, dims=latent_dim)
-        #z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=latent_sigma)
+        #z_samp = sample_zu(samples=n_samp, dims=latent_dim)
+        z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=latent_sigma)
         gen_samples_samp = generator(z_samp)
 
 
