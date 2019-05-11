@@ -3,6 +3,7 @@ from __future__ import print_function
 try:
     import os
     import numpy as np
+    from scipy.stats import truncnorm as truncnorm
     
     from torch.autograd import Variable
     from torch.autograd import grad as torch_grad
@@ -89,6 +90,30 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
+
+
+# Sample a random latent space vector
+def sample_trunc_z(samples=64, dims=10, xlo=-2.0, xhi=2.0, req_grad=False):
+
+    Tensor = torch.cuda.FloatTensor
+    
+    ## Sample noise as generator input, zn
+    z_trunc = []
+    for idim in range(samples):
+        z_trunc.append(truncnorm.rvs(xlo, xhi, size=dims))
+
+    z_trunc = np.asarray(z_trunc)
+
+    #isize = (samples, dims)
+    #u1 = torch.rand(isize) * (1 - np.exp(-2)) + np.exp(-2)
+    #u2 = torch.rand(isize)
+    #z = torch.sqrt(-2 * np.log(u1)) * torch.cos(2*np.pi*u2)
+
+    z = Variable(Tensor(z_trunc), requires_grad=req_grad)
+
+    # Return components of latent space variable
+    return z
+
 
 # Sample a random latent space vector
 def sample_z(samples=64, dims=10, mu=0.0, sigma=1.0, req_grad=False):
