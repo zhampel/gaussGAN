@@ -4,6 +4,7 @@ try:
     import os
     import numpy as np
     from scipy.stats import truncnorm as truncnorm
+    from scipy.stats import cauchy as cauchy
     
     from torch.autograd import Variable
     from torch.autograd import grad as torch_grad
@@ -17,7 +18,6 @@ try:
 except ImportError as e:
     print(e)
     raise ImportError
-
 
 
 # Nan-avoiding logarithm
@@ -92,15 +92,14 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 
-# Sample a random latent space vector
-def sample_trunc_z(samples=64, dims=10, xlo=-2.0, xhi=2.0, req_grad=False):
+def sample_trunc_z(samples=64, dims=10, mu=0.0, sigma=1.0, xlo=-2.0, xhi=2.0, req_grad=False):
 
     Tensor = torch.cuda.FloatTensor
     
     ## Sample noise as generator input, zn
     z_trunc = []
     for idim in range(samples):
-        z_trunc.append(truncnorm.rvs(xlo, xhi, size=dims))
+        z_trunc.append(truncnorm.rvs(xlo, xhi, size=dims)*sigma + mu)
 
     z_trunc = np.asarray(z_trunc)
 
@@ -119,9 +118,26 @@ def sample_trunc_z(samples=64, dims=10, xlo=-2.0, xhi=2.0, req_grad=False):
 def sample_z(samples=64, dims=10, mu=0.0, sigma=1.0, req_grad=False):
 
     Tensor = torch.cuda.FloatTensor
-    
+
     # Sample noise as generator input, zn
     z = Variable(Tensor(np.random.normal(mu, sigma, (samples, dims))), requires_grad=req_grad)
+
+    # Return components of latent space variable
+    return z
+
+
+# Sample from a Caucy distribution
+def sample_cauchy(samples=54, dims=10, loc=0.0, scale=1.0, req_grad=False):
+
+    Tensor = torch.cuda.FloatTensor
+    
+    z_cauchy = []
+    for idim in range(samples):
+        z_cauchy.append(cauchy.rvs(loc=loc, scale=scale, size=dims))
+
+    z_cauchy = np.asarray(z_cauchy)
+
+    z = Variable(Tensor(z_cauchy), requires_grad=req_grad)
 
     # Return components of latent space variable
     return z
@@ -140,6 +156,66 @@ def sample_zu(samples=64, dims=10, req_grad=False):
     return z
 
 
+# Sampling function dictionary
+DATASET_FN_DICT = {'gauss' : sample_z,
+                   'trunc_gauss' : sample_trunc_z,
+                   'cauchy' : sample_cauchy,
+                   'uniform' : sample_zu
+                  }
+
+
+sampler_list = DATASET_FN_DICT.keys()
+
+
+def get_sampler(dist_name='gauss'):
+    """
+    Convenience function for retrieving
+    allowed datasets.
+    Parameters
+    ----------
+    name : {'gauss', 'trunc_gauss', 'uniform'}
+          Name of dataset
+    Returns
+    -------
+    fn : function
+         sampling function
+    """
+    if dist_name in DATASET_FN_DICT:
+        fn = DATASET_FN_DICT[dist_name]
+        return fn
+    else:
+        raise ValueError('Invalid sampler, {}, entered. Must be '
+                         'in {}'.format(dist_name, DATASET_FN_DICT.keys()))
+
+
+# Sampler class
+class Sampler(object):
+    """
+    Sampler function class
+    """
+    def __init__(self, dist_name='gauss', dim=1, n_samples=64, mu=0.0, sigma=1.0, xlo=-2.0, xhi=2.0):
+        self.dist_name = dist_name
+        self.sampler = get_sampler(dist_name=dist_name)
+        self.dim = dim
+        self.n_samples = n_samples
+        self.mu = mu
+        self.sigma = sigma
+        self.xlo = xlo
+        self.xhi = xhi
+
+    # Sample a random latent space vector
+    def sample(self):
+        if self.dist_name == 'gauss':
+            return sample_z(samples=self.n_samples, dims=self.dim, mu=self.mu, sigma=self.sigma, req_grad=False)
+        if self.dist_name == 'trunc_gauss':
+            return sample_trunc_z(samples=self.n_samples, dims=self.dim, mu=self.mu, sigma=self.sigma, xlo=self.xlo, xhi=self.xhi, req_grad=False)
+        if self.dist_name == 'cauchy':
+            return sample_cauchy(samples=self.n_samples, dims=self.dim, loc=self.mu, scale=self.sigma, req_grad=False)
+        if self.dist_name == 'uniform':
+            return sample_zu(samples=self.n_samples, dims=self.dim, req_grad=False)
+
+
+# Gradient penalty calculation for Wasserstein GAN
 def calc_gradient_penalty(netD, real_data, generated_data):
     # GP strength
     LAMBDA = 10
@@ -173,3 +249,5 @@ def calc_gradient_penalty(netD, real_data, generated_data):
 
     # Return gradient penalty
     return LAMBDA * ((gradients_norm - 1) ** 2).mean()
+
+

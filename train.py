@@ -32,7 +32,8 @@ try:
     from gaussgan.definitions import DATASETS_DIR, RUNS_DIR
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
-    from gaussgan.utils import save_model, enorm, calc_gradient_penalty, sample_z, sample_zu
+    #from gaussgan.utils import save_model, enorm, calc_gradient_penalty, sample_z, sample_zu, sample_trunc_z
+    from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm
     from gaussgan.plots import plot_train_loss, compare_histograms
 except ImportError as e:
     print(e)
@@ -41,14 +42,17 @@ except ImportError as e:
 def main():
     global args
     parser = argparse.ArgumentParser(description="GAN training script")
-    parser.add_argument("-d", "--dim", dest="dimensions", default=1, type=int, help="Number of dimensions")
+    parser.add_argument("-f", "--data_file", dest="data_file", required=True, help="File name of dataset")
     parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=20, type=int, help="Number of epochs")
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     args = parser.parse_args()
 
-    dim = args.dimensions
-    run_name = 'dim%i'%dim
+    data_file = args.data_file
+    assert os.path.isfile(data_file), "Dataset file %s dne. Exiting..."%data_file
+    prefix, dist_name, suffix = data_file.split('_')
+    run_name = suffix.split('.')[0]
+    dim = run_name[3:]
     device_id = args.gpu
 
     # Make directory structure for this run
@@ -57,15 +61,15 @@ def main():
     samples_dir = os.path.join(run_dir, 'samples')
     models_dir = os.path.join(run_dir, 'models')
 
-    os.makedirs(run_dir, exist_ok=True)
-    os.makedirs(samples_dir, exist_ok=True)
-    os.makedirs(models_dir, exist_ok=True)
-    print('\nResults to be saved in directory %s\n'%(run_dir))
+    #os.makedirs(run_dir, exist_ok=True)
+    #os.makedirs(samples_dir, exist_ok=True)
+    #os.makedirs(models_dir, exist_ok=True)
+    #print('\nResults to be saved in directory %s\n'%(run_dir))
    
     # Access saved dataset
-    data_file_name = '%s/data_dim%i.h5'%(data_dir, dim)
-    dataset = GaussDataset(file_name=data_file_name)
-    print("Getting dataset from %s"%data_file_name)
+    #data_file_name = '%s/data_dim%i.h5'%(data_dir, dim)
+    dataset = GaussDataset(file_name=data_file)
+    print("Getting dataset from %s"%data_file)
     print("Dataset size: ", dataset.__len__())
 
     # Training details
@@ -115,6 +119,7 @@ def main():
     # Test dataset
     n_test_samples = 1000
     test_data = sample_z(samples=n_test_samples, dims=dim, mu=0.0, sigma=1.0)
+    #test_data = sample_trunc_z(samples=n_test_samples, dims=dim, xlo=-2.0, xhi=2.0)
     r_test = enorm(test_data)
 
     # Prepare test set component histograms
