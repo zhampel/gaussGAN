@@ -39,6 +39,15 @@ class GaussDataset(Dataset):
     def load_file(self):
         assert os.path.isfile(self.file_name), "Dataset file %s dne. Exiting..."%self.file_name
         data_file = tables.open_file(self.file_name, mode='r')
+        # Get metadata from file
+        meta_data = data_file.root.metadata
+        self.dist_name = meta_data.dist[0].decode("utf-8")
+        self.dim = meta_data.dim[0]
+        self.n_samples = meta_data.n_samples[0]
+        self.mu = meta_data.mu[0]
+        self.sigma = meta_data.sigma[0]
+        self.xlo = meta_data.xlo[0]
+        self.xhi = meta_data.xhi[0]
         return data_file
 
     def __len__(self):

@@ -26,6 +26,9 @@ except ImportError as e:
     raise ImportError
 
 
+# Data type for pytables
+atom = tables.Float64Atom()
+
 # Marker/Line Options
 colors = ["blue", "red", "green", "black"]
 colorsmall = ["b", "r", "g", "k"]
@@ -45,7 +48,6 @@ def main():
     data_dir = os.path.join(DATASETS_DIR)
     os.makedirs(data_dir, exist_ok=True)
     print('\nDatasets to be saved in directory %s\n'%(data_dir))
-    atom = tables.Float64Atom()
 
     # Distribution name
     dist_name = args.dist_name
@@ -94,6 +96,9 @@ def main():
         data_file.create_array(meta_group, 'n_total', np.asarray([n_total]), 'Total Number of Samples')
         data_file.create_array(meta_group, 'mu', np.asarray([mu]), 'Mean')
         data_file.create_array(meta_group, 'sigma', np.asarray([sigma]), 'Sigma')
+        data_file.create_array(meta_group, 'xhi', np.asarray([xhi]), 'Upper Limit of Truncation')
+        data_file.create_array(meta_group, 'xlo', np.asarray([xlo]), 'Lower Limit of Truncation')
+        data_file.create_array(meta_group, 'dist', [dist_name], 'Name of Parnet Distribution')
 
         array_c = data_file.create_earray(data_file.root, 'data', atom, (0, dim))
 

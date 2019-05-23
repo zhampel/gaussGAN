@@ -29,11 +29,10 @@ try:
     
     from itertools import chain as ichain
 
-    from gaussgan.definitions import DATASETS_DIR, RUNS_DIR
+    from gaussgan.definitions import RUNS_DIR
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
-    #from gaussgan.utils import save_model, enorm, calc_gradient_penalty, sample_z, sample_zu, sample_trunc_z
-    from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm
+    from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm, sample_z
     from gaussgan.plots import plot_train_loss, compare_histograms
 except ImportError as e:
     print(e)
@@ -49,29 +48,31 @@ def main():
     args = parser.parse_args()
 
     data_file = args.data_file
-    assert os.path.isfile(data_file), "Dataset file %s dne. Exiting..."%data_file
-    prefix, dist_name, suffix = data_file.split('_')
-    run_name = suffix.split('.')[0]
-    dim = run_name[3:]
+    #run_name = data_file.split('.')[0].split('/')[-1]
     device_id = args.gpu
 
-    # Make directory structure for this run
-    run_dir = os.path.join(RUNS_DIR, run_name)
-    data_dir = os.path.join(DATASETS_DIR)
-    samples_dir = os.path.join(run_dir, 'samples')
-    models_dir = os.path.join(run_dir, 'models')
-
-    #os.makedirs(run_dir, exist_ok=True)
-    #os.makedirs(samples_dir, exist_ok=True)
-    #os.makedirs(models_dir, exist_ok=True)
-    #print('\nResults to be saved in directory %s\n'%(run_dir))
-   
     # Access saved dataset
-    #data_file_name = '%s/data_dim%i.h5'%(data_dir, dim)
     dataset = GaussDataset(file_name=data_file)
+    dist_name = dataset.dist_name
+    dim = dataset.dim
+    mu = dataset.mu
+    sigma = dataset.sigma
+    xlo = dataset.xlo
+    xhi = dataset.xhi
     print("Getting dataset from %s"%data_file)
     print("Dataset size: ", dataset.__len__())
 
+    # Make directory structure for this run
+    run_name = dist_name + str(dim)
+    run_dir = os.path.join(RUNS_DIR, run_name)
+    samples_dir = os.path.join(run_dir, 'samples')
+    models_dir = os.path.join(run_dir, 'models')
+
+    os.makedirs(run_dir, exist_ok=True)
+    os.makedirs(samples_dir, exist_ok=True)
+    os.makedirs(models_dir, exist_ok=True)
+    print('\nResults to be saved in directory %s\n'%(run_dir))
+   
     # Training details
     n_epochs = args.n_epochs
     batch_size = args.batch_size
@@ -118,7 +119,12 @@ def main():
 
     # Test dataset
     n_test_samples = 1000
-    test_data = sample_z(samples=n_test_samples, dims=dim, mu=0.0, sigma=1.0)
+    test_sampler = Sampler(dist_name=dist_name,
+                           dim=dim, n_samples=n_test_samples, 
+                           mu=mu, sigma=sigma, xlo=xlo, xhi=xhi)
+    test_data = test_sampler.sample()
+    #test_data = sample_z(samples=n_test_samples, dims=dim, mu=sigma, sigma=sigma)
+    #test_data = sample_z(samples=n_test_samples, dims=dim, mu=0.0, sigma=1.0)
     #test_data = sample_trunc_z(samples=n_test_samples, dims=dim, xlo=-2.0, xhi=2.0)
     r_test = enorm(test_data)
 
