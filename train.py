@@ -135,7 +135,6 @@ def main():
     r_test = enorm(test_data)
 
     # Prepare test set component histograms
-    pdims = np.ceil(np.sqrt(dim))
     test_hist_list = [None] * dim
     xemin = np.floor(np.min(test_data_numpy))
     xemax = np.ceil(np.max(test_data_numpy))
@@ -286,11 +285,13 @@ def main():
         figname = '%s/comp_hist_epoch%05i.png'%(samples_dir, epoch)
         fig = plt.figure(figsize=(18,12))
         mpl.rc("font", family="serif")
-        for idim in range(dim):
+        # For large dimensionalities, cull for visualization
+        subdim = np.min(100, dim)
+        pdims = np.ceil(np.sqrt(subdim))
+        for idim in range(subdim):
             # Initialize histogram for each dimension component
             xhist = np.histogram(gen_data_numpy[:, idim], bins=xedges)[0]
             xhist = xhist / np.sum(xhist)
-            
             iax = fig.add_subplot(pdims, pdims, idim + 1)
             iax.step(xcents, test_hist_list[idim], linewidth=1.5, c='k')
             iax.step(xcents, xhist, linewidth=1.5, c='r')
@@ -300,6 +301,7 @@ def main():
             #plt.yscale('log')
             plt.axis('off')
             
+        for idim in range(dim):
             dval, pval = stats.ks_2samp(gen_data_numpy[:, idim], test_data_numpy[:, idim])
             ks_d_list.append(dval)
             ks_p_list.append(pval)
