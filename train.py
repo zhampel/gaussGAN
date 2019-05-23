@@ -44,6 +44,9 @@ def main():
     parser.add_argument("-f", "--data_file", dest="data_file", required=True, help="File name of dataset")
     parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=20, type=int, help="Number of epochs")
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
+    parser.add_argument("-d", "--latent_dim", dest="latent_dim", default=30, type=int, help="Dimension of latent space")
+    parser.add_argument("-s", "--latent_sigma", dest="latent_sigma", default=0.01, type=float, help="Sigma of latent space")
+    parser.add_argument("-w", "--wass_metric", dest="wass_metric", action='store_true', help="Flag for Wasserstein metric")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     args = parser.parse_args()
 
@@ -62,16 +65,9 @@ def main():
     print("Getting dataset from %s"%data_file)
     print("Dataset size: ", dataset.__len__())
 
-    # Make directory structure for this run
-    run_name = dist_name + str(dim)
-    run_dir = os.path.join(RUNS_DIR, run_name)
-    samples_dir = os.path.join(run_dir, 'samples')
-    models_dir = os.path.join(run_dir, 'models')
-
-    os.makedirs(run_dir, exist_ok=True)
-    os.makedirs(samples_dir, exist_ok=True)
-    os.makedirs(models_dir, exist_ok=True)
-    print('\nResults to be saved in directory %s\n'%(run_dir))
+    # Latent space info
+    latent_dim = args.latent_dim
+    latent_sigma = args.latent_sigma
    
     # Training details
     n_epochs = args.n_epochs
@@ -82,14 +78,26 @@ def main():
     decay = 2.5*1e-5
     n_skip_iter = 1 #5
 
-    # Latent space info
-    latent_dim = 30
-    latent_sigma = 0.01
-   
     # Wasserstein metric flag
-    #wass_metric = True
-    wass_metric = False
+    wass_metric = args.wass_metric
+    mtype = 'van'
+    if (wass_metric):
+        mtype = 'wass'
     
+    # Make directory structure for this run
+    sep_und = '_'
+    run_name_comps = [dist_name, 'dim%s'%str(dim), str(latent_dim), str(latent_sigma), mtype]
+    run_name = sep_und.join(run_name_comps)
+
+    run_dir = os.path.join(RUNS_DIR, run_name)
+    samples_dir = os.path.join(run_dir, 'samples')
+    models_dir = os.path.join(run_dir, 'models')
+
+    os.makedirs(run_dir, exist_ok=True)
+    os.makedirs(samples_dir, exist_ok=True)
+    os.makedirs(models_dir, exist_ok=True)
+    print('\nResults to be saved in directory %s\n'%(run_dir))
+   
     x_shape = dim
     
     cuda = True if torch.cuda.is_available() else False
@@ -123,23 +131,36 @@ def main():
                            dim=dim, n_samples=n_test_samples, 
                            mu=mu, sigma=sigma, xlo=xlo, xhi=xhi)
     test_data = test_sampler.sample()
-    #test_data = sample_z(samples=n_test_samples, dims=dim, mu=sigma, sigma=sigma)
-    #test_data = sample_z(samples=n_test_samples, dims=dim, mu=0.0, sigma=1.0)
-    #test_data = sample_trunc_z(samples=n_test_samples, dims=dim, xlo=-2.0, xhi=2.0)
+    test_data_numpy = test_data.cpu().data.numpy()
     r_test = enorm(test_data)
 
     # Prepare test set component histograms
-    test_hist_list = [None] * dim
-    xedges = np.arange(-4, 4, 0.5)
-    xcents = (xedges[1:]-xedges[:-1])/2 + xedges[0:-1]
     pdims = np.ceil(np.sqrt(dim))
-    test_data_numpy = test_data.cpu().data.numpy()
+    test_hist_list = [None] * dim
+    xemin = np.floor(np.min(test_data_numpy))
+    xemax = np.ceil(np.max(test_data_numpy))
+    rmax = 1.2*int(np.max(r_test))
 
+    # Squeeze limits for Cauchy distribution visualization
+    if 'cauchy' in dist_name:
+        cstd = np.std(test_data_numpy)
+        xemin = -0.1*cstd
+        xemax = 0.1*cstd
+        rmax *= 0.005
+
+    # Histogram bin defs
+    xedges = np.linspace(xemin, xemax, 50)
+    xcents = (xedges[1:]-xedges[:-1])/2 + xedges[0:-1]
+    redges = np.linspace(0, rmax, 50)
+    rcents = (redges[1:]-redges[:-1])/2 + redges[0:-1]
+    
+    yhistmax = -1.0
     for idim in range(dim):
         # Distribution for each dimension component
         xhist = np.histogram(test_data_numpy[:, idim], bins=xedges)[0]
         xhist = xhist / np.sum(xhist)
         test_hist_list[idim] = xhist
+        yhistmax = max(yhistmax, np.max(xhist))
 
     # Theoretical dataset
     chi2_rng = np.random.chisquare(dim, n_test_samples)
@@ -150,9 +171,7 @@ def main():
     print("Comparing theoretical chi2 dist (sqrt) to sampled distribution:")
     print("P-Value: %.04f\tDist-Value: %.04f"%(dval, pval))
 
-    # Bin distributions
-    redges = np.linspace(0, 1.2*int(np.max(r_test)), 20)
-    rcents = (redges[1:]-redges[:-1])/2 + redges[0:-1]
+    # Euclidean norm distributions
     test_hist, _ = np.histogram(r_test, bins=redges)
     chi_hist, _ = np.histogram(chi2_sqrt, bins=redges)
     test_hist = test_hist / float(n_test_samples)
@@ -276,16 +295,19 @@ def main():
             iax.step(xcents, test_hist_list[idim], linewidth=1.5, c='k')
             iax.step(xcents, xhist, linewidth=1.5, c='r')
             iax.grid()
-            iax.set_xlim(-4, 4)
-            iax.set_ylim(0.0, 0.5)
-            #iax.set_ylim(0.01, 0.75)
+            iax.set_xlim(xemin, xemax)
+            iax.set_ylim(0.0, yhistmax*1.5)
             #plt.yscale('log')
             plt.axis('off')
             
             dval, pval = stats.ks_2samp(gen_data_numpy[:, idim], test_data_numpy[:, idim])
             ks_d_list.append(dval)
             ks_p_list.append(pval)
-        
+       
+        # Hack for step plot
+        ks_d_list.append(ks_d_list[-1])
+        ks_p_list.append(ks_p_list[-1])
+
         plt.tight_layout()
         fig.savefig('%s'%figname)
    
@@ -295,13 +317,13 @@ def main():
         mpl.rc("font", family="serif")
         axd = fig.add_subplot(111)
         # D-Values
-        axd.step(np.arange(0, dim, 1), ks_d_list)
+        axd.step(np.arange(-0.5, dim+0.5, 1), ks_d_list, where='post')
         axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$')
         axd.set_xlabel(r'Vector Component')
         axd.set_title(r'Results of KS Test for Each Component')
         # P-Values
         axp = axd.twinx()
-        axp.step(np.arange(0, dim, 1), ks_p_list, c='r')
+        axp.step(np.arange(-0.5, dim+0.5, 1), ks_p_list, c='r', where='post')
         axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
         axp.tick_params('y', colors='r')
         fig.tight_layout()
@@ -319,7 +341,7 @@ def main():
         compare_histograms(hist_list=[test_hist, gen_hist],
                            centers=[rcents, rcents],
                            labels=['Parent', 'Generated'],
-                           ylims=[0, 1.0, False],
+                           ylims=[0.0005, 1.0, True],
                            figname=figname)
       
         # K-S test test btw test data and generated samples (r distribution)

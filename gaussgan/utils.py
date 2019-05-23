@@ -144,12 +144,13 @@ def sample_cauchy(samples=54, dims=10, loc=0.0, scale=1.0, req_grad=False):
 
 
 # Sample a random latent space vector
-def sample_zu(samples=64, dims=10, req_grad=False):
+def sample_zu(samples=64, dims=10, xlo=0.0, xhi=1.0, req_grad=False):
 
     Tensor = torch.cuda.FloatTensor
     
     # Sample noise as generator input, zn
-    z = Variable(Tensor(np.random.random((samples, dims))), requires_grad=req_grad) 
+    z = Variable(Tensor(np.random.uniform(low=xlo, high=xhi, size=(samples, dims))), requires_grad=req_grad) 
+    #z = Variable(Tensor(np.random.random((samples, dims))), requires_grad=req_grad) 
     #z = Variable(Tensor(np.random.normal(mu, sigma, (samples, dims))), requires_grad=req_grad)
 
     # Return components of latent space variable
