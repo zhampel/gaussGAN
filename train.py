@@ -286,7 +286,7 @@ def main():
         fig = plt.figure(figsize=(18,12))
         mpl.rc("font", family="serif")
         # For large dimensionalities, cull for visualization
-        subdim = np.min(100, dim)
+        subdim = np.min([100, dim])
         pdims = np.ceil(np.sqrt(subdim))
         for idim in range(subdim):
             # Initialize histogram for each dimension component
