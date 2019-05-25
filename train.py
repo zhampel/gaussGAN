@@ -33,10 +33,11 @@ try:
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
     from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm, sample_z
-    from gaussgan.plots import plot_train_loss, compare_histograms
+    from gaussgan.plots import plot_train_loss, compare_histograms, plot_corr
 except ImportError as e:
     print(e)
     raise ImportError
+
 
 def main():
     global args
@@ -133,6 +134,11 @@ def main():
     test_data = test_sampler.sample()
     test_data_numpy = test_data.cpu().data.numpy()
     r_test = enorm(test_data)
+        
+    # Plot generated data correlation matrix
+    test_corr = np.corrcoef(test_data_numpy, rowvar=False)
+    figname = '%s/test_corr.png'%(run_dir)
+    test_corr_hist = plot_corr(test_corr, figname, title='$X_{i}^{t}$ Correlation')
 
     # Prepare test set component histograms
     test_hist_list = [None] * dim
@@ -267,8 +273,7 @@ def main():
         generator.eval()
 
         # Set number of examples for cycle calcs
-        n_samp = 1000 
-
+        n_samp = 1000
 
         # Generate sample instances
         #z_samp = sample_zu(samples=n_samp, dims=latent_dim)
@@ -284,7 +289,6 @@ def main():
 
         figname = '%s/comp_hist_epoch%05i.png'%(samples_dir, epoch)
         fig = plt.figure(figsize=(18,12))
-        mpl.rc("font", family="serif")
         # For large dimensionalities, cull for visualization
         subdim = np.min([100, dim])
         pdims = np.ceil(np.sqrt(subdim))
@@ -330,6 +334,11 @@ def main():
         axp.tick_params('y', colors='r')
         fig.tight_layout()
         fig.savefig(figname)
+
+        # Plot generated data correlation matrix
+        gen_corr = np.corrcoef(gen_data_numpy, rowvar=False)
+        figname = '%s/corr_epoch%05i.png'%(samples_dir, epoch)
+        gen_corr_hist = plot_corr(gen_corr, figname, title='$X_{i}^{g}$ Correlation at Epoch %i'%epoch, comp_hist=test_corr_hist)
 
 
         # Euclidean norm calc and comparison
@@ -388,11 +397,26 @@ def main():
                     figname='%s/training_model_losses.png'%(run_dir)
                     )
 
-    # Plot some training results
-    plot_train_loss(df=train_df,
-                    arr_list=['pvalues'],
-                    figname='%s/training_pvalues.png'%(run_dir)
-                    )
+
+    # Plot results of KS test 
+    figname='%s/training_pvalues.png'%(run_dir)
+    fig = plt.figure(figsize=(9,6))
+    mpl.rc("font", family="serif")
+    axd = fig.add_subplot(111)
+    epochs = range(0, n_epochs)
+    # D-Values
+    axd.plot(epochs, dval_i, label=r'$KS_{D}$', color='b', marker='o', linewidth=0)
+    axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
+    axd.tick_params('y', colors='b')
+    axd.set_xlabel(r'Epoch')
+    axd.set_title(r'KS Test on Euclidean Norm')
+    # P-Values
+    axp = axd.twinx()
+    axd.plot(epochs, pval_i, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
+    axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
+    axp.tick_params('y', colors='r')
+    fig.tight_layout()
+    fig.savefig(figname)
 
 
     # Save current state of trained models

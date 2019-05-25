@@ -35,6 +35,7 @@ def gaussian(x, mu, sig):
     """
     Gaussian function
     """
+    #return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))) / np.sqrt(2*np.pi) / sig
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 
