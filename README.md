@@ -39,9 +39,9 @@ The histograms saved in the datasets directory show the distributions of the par
 Below are shown shown some examples.
 
 <p float="left">
-  <img src="docs/images/hist_gauss_dim1.png" width="200" />
-  <img src="docs/images/hist_gauss_dim2.png" width="200" />
-  <img src="docs/images/hist_gauss_dim10.png" width="200" />
+  <img src="docs/images/hist_gauss_dim1.png" width="300" />
+  <img src="docs/images/hist_gauss_dim2.png" width="300" />
+  <img src="docs/images/hist_gauss_dim10.png" width="300" />
 </p>
 
 
