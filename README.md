@@ -13,6 +13,15 @@ source venv/bin/activate
 python setup.py install
 ```
 
+
+## GAN Reference
+The figure below is meant as a guide in order to keep track of distribution spaces and their respective dimensions, etc.
+<p float="left">
+  <img src="docs/images/GAN_diagram.png" width="800" />
+</p>
+
+
+
 ## Generate Data
 
 To generate some n-dimensional data, use the `gen-samples.py` script:
@@ -21,7 +30,7 @@ python gen-samples.py -n 1000 -s gauss -b 10 -d 1 2 10
 ```
 
 where `-n` gives the samples per batch, `-s` specifies the parent distribution (options: gauss, trunc_gauss, cauchy, uniform),
-`-b` is the number of batches to run and `-d` is a list to specify the dimensions n of multi-dimensional datasets to generate.
+`-b` is the number of batches to run and `-d` is a list to specify the dimensions of multi-dimensional datasets to generate (dim of x in figure).
 
 This will create a directory `datasets` with the saved generated data named according to the dimensionality,
 along with figures displaing the Euclidean norm distribution of the datasets:
@@ -52,7 +61,7 @@ To train the generator on a specific n-dimensional dataset, use
 ```
 python train.py -f datasets/data_gauss_dim10.h5 -d 100 -s 0.1 -n 100
 ```
-where `-f` specifies the parent distribution dataset to mode, `-d` defines the dimensions of the Gaussian latent space variable,
+where `-f` specifies the parent distribution dataset to model, `-d` defines the dimensions of the Gaussian latent space variable (dim of z in figure),
 `-s` is the width of the Gaussian latent space for all elements, and `-n` is the number of epochs over which to train.
 The option to use a Wasserstein + gradient penalty update rule is provided by the `-w` flag, with the Vanilla GAN being the default method.
 
@@ -87,7 +96,7 @@ Some example figures from training a GAN on a 100-dimensional Gaussian dataset w
 These show results after having trained for 50 epochs.
 
 
-True (black) compared to generated (red) samples
+True (black, x in figure) compared to generated (red, x' in figure) samples.
 <p float="left">
   <img src="docs/images/example_train/comp_hist_epoch00049.png" width="800" />
 </p>
@@ -97,7 +106,7 @@ Correlation matrix of 1000 samples from generator. The cross-correlations for a 
   <img src="docs/images/example_train/corr_epoch00049.png" width="800" />
 </p>
 
-Euclidean norm distribution (left) for parent and generated samples, and the KS-test results comparing a batch of samples for each vector component (right).
+Euclidean norm distribution (||x||, left) for parent and generated samples, and the KS-test results comparing a batch of samples for each vector component (right).
 <p float="left">
   <img src="docs/images/example_train/rhist_epoch00049.png" width="400" />
   <img src="docs/images/example_train/ks_epoch00049.png" width="400" />
