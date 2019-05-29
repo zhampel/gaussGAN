@@ -1,13 +1,12 @@
 # Ignore contents of virtual environment directory
 venv/*
 
-# Keep all documenation
-!docs/*
-!docs/images/*
-
 # Save no outputs
 *png
 *csv
+
+# Keep all documenation figures
+!docs/**/*png
 
 # Ignore saved run information: models, figures, datasets
 runs/*
