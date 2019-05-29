@@ -89,16 +89,16 @@ These show results after having trained for 50 epochs.
 
 True (black) compared to generated (red) samples
 <p float="left">
-  <img src="docs/images/example_train/comp_hist_epoch00049.png" width="400" />
+  <img src="docs/images/example_train/comp_hist_epoch00049.png" width="800" />
 </p>
 
 Correlation matrix of 1000 samples from generator. The cross-correlations for a same-sized sample from the parent distribution is shown in red. 
 <p float="left">
-  <img src="docs/images/example_train/corr_epoch00049.png" width="400" />
+  <img src="docs/images/example_train/corr_epoch00049.png" width="800" />
 </p>
 
 Euclidean norm distribution (left) for parent and generated samples, and the KS-test results comparing a batch of samples for each vector component (right).
 <p float="left">
-  <img src="docs/images/example_train/rhist_epoch00049.png" width="200" />
-  <img src="docs/images/example_train/ks_epoch00049.png" width="200" />
+  <img src="docs/images/example_train/rhist_epoch00049.png" width="400" />
+  <img src="docs/images/example_train/ks_epoch00049.png" width="400" />
 </p>
