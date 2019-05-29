@@ -1,6 +1,10 @@
 # Ignore contents of virtual environment directory
 venv/*
 
+# Keep all documenation
+!docs/*
+!docs/images/*
+
 # Save no outputs
 *png
 *csv
