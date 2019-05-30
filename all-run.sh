@@ -33,11 +33,11 @@ sig=0.01
 for ldim in ${ldim_list[@]}; do
     for dim in ${dim_list[@]}; do
         echo "Running latent dimension" $ldim "over data dimension" ${dim}
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -g 1 -d ${ldim} -s ${sig} &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -d ${ldim} -s ${sig} -g 1 &
         P1=$!
         python train.py -f /home/zhampel/gaussGAN/datasets/data_trunc_gauss_dim${dim}.h5 -n ${n_epochs} -d ${ldim} -s ${sig} -g 2 &
         P2=$!
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_cauchy_dim${dim}.h5 -n ${n_epochs} -g 1 -d ${ldim} -s ${sig} -g 3 &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_cauchy_dim${dim}.h5 -n ${n_epochs} -d ${ldim} -s ${sig} -g 3 &
         P3=$!
         wait $P1 $P2 $P3
     done
