@@ -52,7 +52,6 @@ def main():
     args = parser.parse_args()
 
     data_file = args.data_file
-    #run_name = data_file.split('.')[0].split('/')[-1]
     device_id = args.gpu
 
     # Access saved dataset
@@ -310,23 +309,29 @@ def main():
             ks_d_list.append(dval)
             ks_p_list.append(pval)
        
+        # Label color scheme in title at bottom of figure
+        fig.text(0.415, 0.0125, 'Generated', ha='left', fontsize=16, color='r')
+        tactext = 'True &                  Components at Epoch %i'%epoch
+        fig.text(0.5, 0.0125, tactext, ha='center', fontsize=16, color='k')
+
+        plt.tight_layout()
+        fig.savefig('%s'%figname)
+ 
+
         # Hack for step plot
         ks_d_list.append(ks_d_list[-1])
         ks_p_list.append(ks_p_list[-1])
 
-        plt.tight_layout()
-        fig.savefig('%s'%figname)
-   
         # Save results of KS test to figure
         figname = '%s/ks_epoch%05i.png'%(samples_dir, epoch)
         fig = plt.figure(figsize=(9,6))
         mpl.rc("font", family="serif")
         axd = fig.add_subplot(111)
         # D-Values
-        axd.step(np.arange(-0.5, dim+0.5, 1), ks_d_list, where='post')
+        axd.step(np.arange(-0.5, dim+0.5, 1), ks_d_list, c='k', where='post')
         axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$')
         axd.set_xlabel(r'Vector Component')
-        axd.set_title(r'Results of KS Test for Each Component')
+        axd.set_title(r'KS Test for Each Component at Epoch %i'%epoch)
         # P-Values
         axp = axd.twinx()
         axp.step(np.arange(-0.5, dim+0.5, 1), ks_p_list, c='r', where='post')
@@ -335,10 +340,15 @@ def main():
         fig.tight_layout()
         fig.savefig(figname)
 
+
         # Plot generated data correlation matrix
         gen_corr = np.corrcoef(gen_data_numpy, rowvar=False)
         figname = '%s/corr_epoch%05i.png'%(samples_dir, epoch)
-        gen_corr_hist = plot_corr(gen_corr, figname, title='$X_{i}^{g}$ Correlation at Epoch %i'%epoch, comp_hist=test_corr_hist)
+        ctitle = '$X_{i}^{g}$ Correlation at Epoch %i'%epoch
+        gen_corr_hist = plot_corr(corr=gen_corr,
+                                  figname=figname,
+                                  title=ctitle,
+                                  comp_hist=test_corr_hist)
 
 
         # Euclidean norm calc and comparison
@@ -386,6 +396,10 @@ def main():
                              'disc_loss' : ['D', d_l],
                              'pvalues' : ['pvals', pval_i],
                              'dvalues' : ['dvals', dval_i],
+                             'true_corr' : ['test_corr', test_corr],
+                             'gen_corr' : ['gen_corr', gen_corr],
+                             'true_xcorr' : ['test_corr_hist', test_corr_hist],
+                             'gen_xcorr' : ['gen_corr_hist', gen_corr_hist],
                             })
 
     train_df.to_csv('%s/training_details.csv'%(run_dir))
@@ -399,7 +413,7 @@ def main():
 
 
     # Plot results of KS test 
-    figname='%s/training_pvalues.png'%(run_dir)
+    figname='%s/training_kstest.png'%(run_dir)
     fig = plt.figure(figsize=(9,6))
     mpl.rc("font", family="serif")
     axd = fig.add_subplot(111)
@@ -413,6 +427,7 @@ def main():
     # P-Values
     axp = axd.twinx()
     axd.plot(epochs, pval_i, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
+    axp.set_ylim(0, 1.1*max(pval_i))
     axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
     axp.tick_params('y', colors='r')
     fig.tight_layout()

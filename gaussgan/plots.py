@@ -16,7 +16,7 @@ except ImportError as e:
     print(e)
     raise ImportError
 
-
+colors = ['k', 'r', 'b', 'm']
 mpl.rc("font", family="serif", size=14)
 
 def plot_corr(corr=None, figname='', title='', comp_hist=None):
@@ -30,7 +30,7 @@ def plot_corr(corr=None, figname='', title='', comp_hist=None):
     ax.set_xlabel(r'Component')
     ax.set_ylabel(r'Component')
     cbar = fig.colorbar(cp, ax=ax)
-    cbar.set_label(r'$r(x_i, x_j)$', fontsize=16)
+    cbar.set_label(r'$r(x_i, x_j)^{g}$', fontsize=16)
    
     # Plot histogram of off-diag corr
     off_diag = np.ravel(corr[~np.eye(corr.shape[0], dtype=bool)])
@@ -48,17 +48,19 @@ def plot_corr(corr=None, figname='', title='', comp_hist=None):
     #sigma = popt[1]
     #xfit = np.linspace(-1.0, 1.0, 1000)
     #gfit = gaussian(xfit, mu, sigma)
+    #ax.plot(xfit, gfit, color='r', linewidth=0.75, label=r'Fit: $N(%f, %f)$'%(mu, sigma))
 
     ax = fig.add_subplot(122)
-    ax.step(xedges, off_hist, c='b', where='post', label=r'$r_{x,y}$')
     if comp_hist is not None:
-        ax.step(xedges, comp_hist, 'r--', where='post', label=r'$r_{x,y}^{t}$')
-        #ax.step(xedges, comp_hist, c='r--', markertype='..', where='post', label=r'$r_{x,y}^{t}$')
-    #ax.plot(xfit, gfit, color='r', linewidth=0.75, label=r'Fit: $N(%f, %f)$'%(mu, sigma))
-    plt.yscale('log')
+        ax.step(xedges, off_hist, c='r', where='post', label=r'$r_{x,y}^{g}$')
+        ax.step(xedges, comp_hist, 'k--', where='post', label=r'$r_{x,y}^{t}$')
+    else:
+        ax.step(xedges, off_hist, c='k', where='post', label=r'$r_{x,y}$')
+
     ax.set_xlabel(r'$r(x_i, x_j)$, $i \neq j$')
     ax.set_ylabel(r'Normalized Frequency')
     ax.set_xlim(-1.0, 1.0)
+    plt.yscale('log')
     ax.set_ylim(0.005, 1.0)
     ax.grid()
     plt.legend(loc='upper right')
@@ -76,15 +78,14 @@ def compare_histograms(hist_list=[], centers=[], labels=[], ylims=[0, 1, False],
     
     for idx, hist in enumerate(hist_list):
         # Draw dist with steps
-        ax.step(centers[idx], hist, linewidth=1.5, label=labels[idx])
+        ax.step(centers[idx], hist, linewidth=1.5, label=labels[idx], c=colors[idx])
         ymax = max(ymax, np.float(np.max(hist)))
 
-    ax.set_xlabel(r'Radius, $r = |x|_{2}$')
+    ax.set_xlabel(r'$\mathscr{l}^{2}$-Norm, $r = ||\mathbf{x}||_{2}$')
+    ax.set_ylabel(r'Normalized Frequency')
     ax.set_ylim(ylims[0], ylims[1])
+    ax.set_title('Distribution of Vector Magnitudes')
     
-    ax.set(xlabel=r'Vector Magnitude, $r$', ylabel='P(r)',
-           title='Distribution of Vector Magnitudes')
-
     ax.grid()
 
     if ylims[2] and ylims[0] > 0.0:
@@ -98,7 +99,6 @@ def compare_histograms(hist_list=[], centers=[], labels=[], ylims=[0, 1, False],
 def plot_histogram(hist=None, centers=None, label=None, figname=None):
 
     fig = plt.figure(figsize=(9,6))
-    #mpl.rc("font", family="serif")
     ax = fig.add_subplot(111)
     ymax = -1.0
     # Draw dist with steps
