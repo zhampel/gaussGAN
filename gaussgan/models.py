@@ -52,12 +52,15 @@ class Generator(nn.Module):
         
         self.model = nn.Sequential(
             # Fully connected layers
-            torch.nn.Linear(self.latent_dim, 512),
-            nn.BatchNorm1d(512),
+            torch.nn.Linear(self.latent_dim, 8192),
+            nn.BatchNorm1d(8192),
+            #torch.nn.Linear(self.latent_dim, 512),
+            #nn.BatchNorm1d(512),
             #torch.nn.ReLU(True),
             nn.LeakyReLU(0.2, inplace=True),
 
-            torch.nn.Linear(512, 256),
+            torch.nn.Linear(8192, 256),
+            #torch.nn.Linear(512, 256),
             nn.BatchNorm1d(256),
             #torch.nn.ReLU(True),
             nn.LeakyReLU(0.2, inplace=True),
