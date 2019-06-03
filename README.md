@@ -101,7 +101,9 @@ True (black, x in figure) compared to generated (red, x' in figure) samples.
   <img src="docs/images/example_train/comp_hist_epoch00049.png" width="800" />
 </p>
 
-Correlation matrix of 1000 samples from generator. The cross-correlations for a same-sized sample from the parent distribution is shown in red. 
+Correlation matrix of 1000 samples from generator.
+The distribution of the off-diagonal elements (cross-correlations) are shown in red in the left panel.
+The cross-correlations for a same-sized sample from the parent distribution is shown in black (representing the best we can do, statistically speaking).
 <p float="left">
   <img src="docs/images/example_train/corr_epoch00049.png" width="800" />
 </p>
