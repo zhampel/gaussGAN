@@ -49,23 +49,27 @@ class Generator(nn.Module):
         self.latent_dim = latent_dim
         self.x_dim = x_dim
         self.verbose = verbose
+        self.ten_x_lat = 10*self.latent_dim
+        self.ten_x_dim = 10*self.x_dim
         
         self.model = nn.Sequential(
             # Fully connected layers
-            torch.nn.Linear(self.latent_dim, 8192),
-            nn.BatchNorm1d(8192),
+            torch.nn.Linear(self.latent_dim, self.ten_x_lat),
+            nn.BatchNorm1d(self.ten_x_lat),
             #torch.nn.Linear(self.latent_dim, 512),
             #nn.BatchNorm1d(512),
             #torch.nn.ReLU(True),
             nn.LeakyReLU(0.2, inplace=True),
 
-            torch.nn.Linear(8192, 256),
-            #torch.nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            #torch.nn.ReLU(True),
+            torch.nn.Linear(self.ten_x_lat, 512),
+            nn.BatchNorm1d(512),
             nn.LeakyReLU(0.2, inplace=True),
             
-            torch.nn.Linear(256, x_dim),
+            torch.nn.Linear(512, self.ten_x_dim),
+            nn.BatchNorm1d(self.ten_x_dim),
+            nn.LeakyReLU(0.2, inplace=True),
+            
+            torch.nn.Linear(self.ten_x_dim, x_dim),
         )
 
         initialize_weights(self)
@@ -94,17 +98,26 @@ class Discriminator(nn.Module):
         self.wass = wass_metric
         self.dim = dim
         self.verbose = verbose
+        self.ten_x_dim = 10*self.dim
         
         self.model = nn.Sequential(
-            nn.Linear(self.dim, 1024),
+            nn.Linear(self.dim, self.ten_x_dim),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(1024, 512),
+            nn.Linear(self.ten_x_dim, 512),
             nn.LeakyReLU(0.2, inplace=True),
+            #nn.Linear(self.ten_x_dim, 1024),
+            #nn.LeakyReLU(0.2, inplace=True),
+            #nn.Linear(1024, 512),
+            #nn.LeakyReLU(0.2, inplace=True),
             
             # Fully connected layers
             torch.nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Linear(256, 1),
+            
+            # Fully connected layers
+            torch.nn.Linear(256, 128),
+            nn.LeakyReLU(0.2, inplace=True),
+            torch.nn.Linear(128, 1),
         )
         
         # If NOT using Wasserstein metric, final Sigmoid
