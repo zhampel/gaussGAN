@@ -76,7 +76,8 @@ def main():
     b1 = 0.5
     b2 = 0.9 #99
     decay = 2.5*1e-5
-    n_skip_iter = 1 #5
+    n_skip_iter = 5
+    #n_skip_iter = 1 #5
 
     # Wasserstein metric flag
     wass_metric = args.wass_metric
@@ -133,11 +134,11 @@ def main():
     test_data = test_sampler.sample()
     test_data_numpy = test_data.cpu().data.numpy()
     r_test = enorm(test_data)
-        
+
     # Plot generated data correlation matrix
     test_corr = np.corrcoef(test_data_numpy, rowvar=False)
     figname = '%s/test_corr.png'%(run_dir)
-    test_corr_hist = plot_corr(test_corr, figname, title='$X_{i}^{t}$ Correlation')
+    test_corr_hist, test_fit_sigma = plot_corr(test_corr, figname, title='$X_{i}^{t}$ Correlation')
 
     # Prepare test set component histograms
     test_hist_list = [None] * dim
@@ -192,6 +193,7 @@ def main():
     d_l = []
     dval_i = []
     pval_i = []
+    gen_fit_sigma_list = []
     
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
@@ -264,15 +266,15 @@ def main():
             optimizer_D.step()
 
 
-        # Save training losses
-        d_l.append(d_loss.item())
-        g_l.append(g_loss.item())
+            # Save training losses
+            d_l.append(d_loss.item())
+            g_l.append(g_loss.item())
    
         # Generator in eval mode
         generator.eval()
 
         # Set number of examples for cycle calcs
-        n_samp = 1000
+        n_samp = n_test_samples
 
         # Generate sample instances
         #z_samp = sample_zu(samples=n_samp, dims=latent_dim)
@@ -345,10 +347,12 @@ def main():
         gen_corr = np.corrcoef(gen_data_numpy, rowvar=False)
         figname = '%s/corr_epoch%05i.png'%(samples_dir, epoch)
         ctitle = '$X_{i}^{g}$ Correlation at Epoch %i'%epoch
-        gen_corr_hist = plot_corr(corr=gen_corr,
-                                  figname=figname,
-                                  title=ctitle,
-                                  comp_hist=test_corr_hist)
+        gen_corr_hist, gen_fit_sigma = plot_corr(corr=gen_corr,
+                                             figname=figname,
+                                             title=ctitle,
+                                             comp_hist=test_corr_hist)
+
+        gen_fit_sigma_list.append(gen_fit_sigma)
 
 
         # Euclidean norm calc and comparison
@@ -400,6 +404,9 @@ def main():
                              'gen_corr' : ['gen_corr', gen_corr],
                              'true_xcorr' : ['test_corr_hist', test_corr_hist],
                              'gen_xcorr' : ['gen_corr_hist', gen_corr_hist],
+                             'n_test_samples' : n_test_samples,
+                             'test_fit_sigma' : test_fit_sigma,
+                             'gen_fit_sigma' : ['gen_sigma' , gen_fit_sigma_list],
                             })
 
     train_df.to_csv('%s/training_details.csv'%(run_dir))
@@ -410,6 +417,22 @@ def main():
                     arr_list=['gen_loss', 'disc_loss'],
                     figname='%s/training_model_losses.png'%(run_dir)
                     )
+
+    
+    # Plot results of xcorr fit 
+    figname='%s/training_sigmaxcorr.png'%(run_dir)
+    fig = plt.figure(figsize=(9,6))
+    mpl.rc("font", family="serif")
+    ax = fig.add_subplot(111)
+    epochs = range(0, n_epochs)
+    # D-Values
+    ax.plot(epochs, gen_fit_sigma_list / test_fit_sigma, color='b', marker='o', linewidth=0)
+    ax.set_ylabel(r'$\sigma_{g}^{r} / \sigma_{t}^{r}$', fontsize=16)
+    ax.set_xlabel(r'Epoch')
+    ax.set_title(r'Cross Corr. Fit Width Comparison for $N=%i$ samples'%n_test_samples)
+    fig.tight_layout()
+    fig.savefig(figname)
+
 
 
     # Plot results of KS test 
