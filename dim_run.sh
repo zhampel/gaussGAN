@@ -14,7 +14,7 @@ dim_list=(10 25 50 75 100 250 500 750 1000)
 ldim_list=(1 2 3 4 5 6 7 8 9 10 20 30 40 50 60 70 80 90 100 200 300 400 500 600 700 800 900 1000)
 
 # Training Section
-n_epochs=10
+n_epochs=100
 
 # Latent Parameters
 sig=1.0
@@ -29,11 +29,11 @@ for ((idx=0; idx<9; idx=$((idx+3)))); do
 
     for ldim in ${ldim_list[@]}; do
         echo "  Latent dimension:" ${ldim}
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim_list[idx]}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim} -s ${sig} -g 1 &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim_list[idx]}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim} -s ${sig} -g 1 -w &
         P1=$!
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim_list[idx+1]}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim} -s ${sig} -g 2 &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim_list[idx+1]}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim} -s ${sig} -g 2 -w &
         P2=$!
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim_list[idx+2]}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim} -s ${sig} -g 3 &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim_list[idx+2]}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim} -s ${sig} -g 3 -w &
         P3=$!
         wait $P1 $P2 $P3
     done
