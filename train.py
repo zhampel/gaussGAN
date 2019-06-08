@@ -47,6 +47,7 @@ def main():
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
     parser.add_argument("-d", "--latent_dim", dest="latent_dim", default=30, type=int, help="Dimension of latent space")
     parser.add_argument("-s", "--latent_sigma", dest="latent_sigma", default=0.01, type=float, help="Sigma of latent space")
+    parser.add_argument("-c", "--dscale", dest="dscale", default=10, type=int, help="Model scaling parameter")
     parser.add_argument("-w", "--wass_metric", dest="wass_metric", action='store_true', help="Flag for Wasserstein metric")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     args = parser.parse_args()
@@ -68,6 +69,7 @@ def main():
     # Latent space info
     latent_dim = args.latent_dim
     latent_sigma = args.latent_sigma
+    dscale = args.dscale
    
     # Training details
     n_epochs = args.n_epochs
@@ -111,7 +113,7 @@ def main():
     mse_loss = torch.nn.MSELoss()
     
     # Initialize generator and discriminator
-    generator = Generator(latent_dim, x_shape)
+    generator = Generator(latent_dim, x_shape, dscale)
     discriminator = Discriminator(dim=dim, wass_metric=wass_metric)
     
     if cuda:
@@ -432,7 +434,6 @@ def main():
     ax.set_title(r'Cross Corr. Fit Width Comparison for $N=%i$ samples'%n_test_samples)
     fig.tight_layout()
     fig.savefig(figname)
-
 
 
     # Plot results of KS test 

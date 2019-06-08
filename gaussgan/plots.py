@@ -19,6 +19,7 @@ except ImportError as e:
     raise ImportError
 
 colors = ['k', 'r', 'b', 'm']
+ncols = len(colors)
 mpl.rc("font", family="serif", size=14)
 
 def plot_corr(corr=None, figname='', title='', comp_hist=None):
@@ -78,7 +79,7 @@ def compare_histograms(hist_list=[], centers=[], labels=[], ylims=[0, 1, False],
     
     for idx, hist in enumerate(hist_list):
         # Draw dist with steps
-        ax.step(centers[idx], hist, linewidth=1.5, label=labels[idx], c=colors[idx])
+        ax.step(centers[idx], hist, linewidth=1.5, label=labels[idx], c=colors[idx%ncols])
         ymax = max(ymax, np.float(np.max(hist)))
 
     ax.set_xlabel(r'$\mathscr{l}^{2}$-Norm, $r = ||\mathbf{x}||_{2}$')

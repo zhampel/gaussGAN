@@ -42,15 +42,16 @@ class Generator(nn.Module):
     Input is a vector from representation space of dimension z_dim
     output is a vector from image space of dimension X_dim
     """
-    def __init__(self, latent_dim, x_dim, verbose=False):
+    def __init__(self, latent_dim, x_dim, dscale=10, verbose=False):
         super(Generator, self).__init__()
 
         self.name = 'generator'
         self.latent_dim = latent_dim
         self.x_dim = x_dim
         self.verbose = verbose
-        self.ten_x_lat = 10*self.latent_dim
-        self.ten_x_dim = 10*self.x_dim
+        self.dscale = dscale
+        self.ten_x_lat = int(dscale*self.latent_dim)
+        self.ten_x_dim = int(dscale*self.x_dim)
         
         self.model = nn.Sequential(
             # Fully connected layers
