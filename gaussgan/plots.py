@@ -30,10 +30,10 @@ def plot_corr(corr=None, figname='', title='', comp_hist=None):
     cmap = cm.get_cmap('coolwarm', 30)
     cp = ax.pcolormesh(corr, cmap=cmap, vmin=-1.0, vmax=1.0)
     ax.set_title(r'%s'%title)
-    ax.set_xlabel(r'Component')
-    ax.set_ylabel(r'Component')
+    ax.set_xlabel(r'Component $i$')
+    ax.set_ylabel(r'Component $j$')
     cbar = fig.colorbar(cp, ax=ax)
-    cbar.set_label(r'$r(x_i, x_j)^{g}$', fontsize=16)
+    cbar.set_label(r'$\rho_{ij}$', fontsize=16)
    
     # Plot histogram of off-diag corr
     off_diag = np.ravel(corr[~np.eye(corr.shape[0], dtype=bool)])
@@ -45,11 +45,11 @@ def plot_corr(corr=None, figname='', title='', comp_hist=None):
 
     ax = fig.add_subplot(122)
     if comp_hist is not None:
-        ax.step(xedges, off_hist, c='r', where='post', label=r'$r_{x,y}^{g}$')
-        ax.step(xedges, comp_hist, 'k--', where='post', label=r'$r_{x,y}^{t}$')
+        ax.step(xedges, off_hist, c='r', where='post', label=r'$\rho^{g}$')
+        ax.step(xedges, comp_hist, 'k--', where='post', label=r'$\rho^{t}$')
 
     else:
-        ax.step(xedges, off_hist, c='k', where='post', label=r'$r_{x,y}$')
+        ax.step(xedges, off_hist, c='k', where='post', label=r'$\rho^{t}$')
 
     # Plot fit to normal distribution
     (mu, sigma) = norm.fit(off_diag)
@@ -57,7 +57,7 @@ def plot_corr(corr=None, figname='', title='', comp_hist=None):
     gfit = np.max(off_hist) * gaussian(xfit, mu, sigma)
     ax.plot(xfit, gfit, 'b:', linewidth=2.0, label=r'$\mathscr{N}(%.03f, %.03f)$'%(mu, sigma))
 
-    ax.set_xlabel(r'$r(x_i, x_j)$, $i \neq j$')
+    ax.set_xlabel(r'$\rho(x_i, x_j)$, $i \neq j$')
     ax.set_ylabel(r'Normalized Frequency')
     ax.set_xlim(-1.0, 1.0)
     plt.yscale('log')
@@ -85,7 +85,7 @@ def compare_histograms(hist_list=[], centers=[], labels=[], ylims=[0, 1, False],
     ax.set_xlabel(r'$\mathscr{l}^{2}$-Norm, $r = ||\mathbf{x}||_{2}$')
     ax.set_ylabel(r'Normalized Frequency')
     ax.set_ylim(ylims[0], ylims[1])
-    ax.set_title('Distribution of Vector Magnitudes')
+    ax.set_title('Magnitude Distributions at Epoch %s'%labels[-1])
     
     ax.grid()
 
@@ -121,15 +121,17 @@ def plot_histogram(hist=None, centers=None, label=None, figname=None):
 
 def plot_train_loss(df=[], arr_list=[''], figname='training_loss.png'):
 
+    n_epochs = df['n_epochs'][0]
+
     fig, ax = plt.subplots(figsize=(16,10))
     for arr in arr_list:
         label = df[arr][0]
         vals = df[arr][1]
-        epochs = range(0, len(vals))
+        n_iter = len(vals)
+        epochs = np.linspace(0., np.float(n_epochs), num=n_iter)
         ax.plot(epochs, vals, label=r'%s'%(label), marker='o', markersize=3, linewidth=0)
     
-    #ax.set(xlabel='Epoch', ylabel='Loss',
-    ax.set(xlabel='Iteration', ylabel='Loss',
+    ax.set(xlabel='Epoch', ylabel='Loss',
            title='Loss vs Training Epoch')
     ax.grid()
     plt.legend(loc='upper right', fontsize=16)

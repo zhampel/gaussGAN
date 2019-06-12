@@ -26,7 +26,7 @@ try:
     from torchvision import datasets
     import torchvision.transforms as transforms
     from torchvision.utils import save_image
-    
+
     from itertools import chain as ichain
 
     from gaussgan.definitions import RUNS_DIR
@@ -115,7 +115,7 @@ def main():
     # Initialize generator and discriminator
     generator = Generator(latent_dim, x_shape, dscale)
     discriminator = Discriminator(dim=dim, wass_metric=wass_metric)
-    
+
     if cuda:
         generator.cuda()
         discriminator.cuda()
@@ -140,7 +140,7 @@ def main():
     # Plot generated data correlation matrix
     test_corr = np.corrcoef(test_data_numpy, rowvar=False)
     figname = '%s/test_corr.png'%(run_dir)
-    test_corr_hist, test_fit_sigma = plot_corr(test_corr, figname, title='$X_{i}^{t}$ Correlation')
+    test_corr_hist, test_fit_sigma = plot_corr(test_corr, figname, title='$X^{t}$ Correlation')
 
     # Prepare test set component histograms
     test_hist_list = [None] * dim
@@ -314,8 +314,9 @@ def main():
             ks_p_list.append(pval)
        
         # Label color scheme in title at bottom of figure
-        fig.text(0.415, 0.0125, 'Generated', ha='left', fontsize=16, color='r')
-        tactext = 'True &                  Components at Epoch %i'%epoch
+        fig.text(0.5, 0.03, 'Epoch %i'%epoch, ha='center', fontsize=16, color='k')
+        fig.text(0.45, 0.0125, 'Generated', ha='left', fontsize=16, color='r')
+        tactext = 'True &                  Components'
         fig.text(0.5, 0.0125, tactext, ha='center', fontsize=16, color='k')
 
         plt.tight_layout()
@@ -348,11 +349,11 @@ def main():
         # Plot generated data correlation matrix
         gen_corr = np.corrcoef(gen_data_numpy, rowvar=False)
         figname = '%s/corr_epoch%05i.png'%(samples_dir, epoch)
-        ctitle = '$X_{i}^{g}$ Correlation at Epoch %i'%epoch
+        ctitle = '$X^{g}$ Correlation at Epoch %i'%epoch
         gen_corr_hist, gen_fit_sigma = plot_corr(corr=gen_corr,
-                                             figname=figname,
-                                             title=ctitle,
-                                             comp_hist=test_corr_hist)
+                                                 figname=figname,
+                                                 title=ctitle,
+                                                 comp_hist=test_corr_hist)
 
         gen_fit_sigma_list.append(gen_fit_sigma)
 
@@ -367,7 +368,7 @@ def main():
         figname = '%s/rhist_epoch%05i.png'%(samples_dir, epoch)
         compare_histograms(hist_list=[test_hist, gen_hist],
                            centers=[rcents, rcents],
-                           labels=['Parent', 'Generated'],
+                           labels=['Parent', 'Generated', '%i'%epoch],
                            ylims=[0.0005, 1.0, True],
                            figname=figname)
       
@@ -429,9 +430,9 @@ def main():
     epochs = range(0, n_epochs)
     # D-Values
     ax.plot(epochs, gen_fit_sigma_list / test_fit_sigma, color='b', marker='o', linewidth=0)
-    ax.set_ylabel(r'$\sigma_{g}^{r} / \sigma_{t}^{r}$', fontsize=16)
+    ax.set_ylabel(r'$\sigma^{g}_{\rho} / \sigma^{t}_{\rho}$', fontsize=16)
     ax.set_xlabel(r'Epoch')
-    ax.set_title(r'Cross Corr. Fit Width Comparison for $N=%i$ samples'%n_test_samples)
+    ax.set_title(r'Cross Corr. Width Ratio for $N=%i$ samples'%n_test_samples)
     fig.tight_layout()
     fig.savefig(figname)
 
