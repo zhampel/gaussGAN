@@ -89,7 +89,7 @@ def main():
     
     # Make directory structure for this run
     sep_und = '_'
-    run_name_comps = [dist_name, 'dim%s'%str(dim), str(latent_dim), str(latent_sigma), mtype]
+    run_name_comps = [dist_name, 'dim%s'%str(dim), 'c%s'%str(dscale), 'z%s'%str(latent_dim), 's%s'%str(latent_sigma), mtype]
     run_name = sep_und.join(run_name_comps)
 
     run_dir = os.path.join(RUNS_DIR, run_name)

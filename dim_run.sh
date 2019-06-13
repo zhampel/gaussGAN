@@ -7,7 +7,8 @@ start=`date +%s`
 
 # List of dimensions to run
 #dim_list=(2 10 100 1000)
-dim_list=(10 25 50 75 100 250 500 750 1000)
+#dim_list=(10 25 50 75 100 250 500 750 1000)
+dim_list=(10 25 50 75 100 250) #500 750 1000)
 
 # List of latent dimensions to run
 #ldim_list=(1 10 100 1000)
