@@ -29,11 +29,11 @@ for ((idx=0; idx<15; idx=$((idx+3)))); do
 
     for dscale in ${dscale_list[@]}; do
         echo "  Scale value:" ${dscale}
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim_list[idx]} -s ${sig} -g 1 -w &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim_list[idx]} -s ${sig} -g 1 &
         P1=$!
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim_list[idx+1]} -s ${sig} -g 2 -w &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim_list[idx+1]} -s ${sig} -g 2 &
         P2=$!
-        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim_list[idx+2]} -s ${sig} -g 3 -w &
+        python train.py -f /home/zhampel/gaussGAN/datasets/data_gauss_dim${dim}.h5 -n ${n_epochs} -c ${dscale} -d ${ldim_list[idx+2]} -s ${sig} -g 3 &
         P3=$!
         wait $P1 $P2 $P3
     done

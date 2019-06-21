@@ -399,6 +399,7 @@ def main():
                              'latent_dim' : latent_dim,
                              'latent_sigma' : latent_sigma,
                              'wass_metric' : wass_metric,
+                             'scale_factor' : dscale,
                              'gen_loss' : ['G', g_l],
                              'disc_loss' : ['D', d_l],
                              'pvalues' : ['pvals', pval_i],
