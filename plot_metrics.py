@@ -42,10 +42,15 @@ def main():
     global args
     parser = argparse.ArgumentParser(description="GAN metric plotting script")
     parser.add_argument("-r", "--run_list", dest="run_list", nargs="+", help="List of runs")
+    parser.add_argument("-s", "--suffix", dest="suffix", default="", help="Suffix to figure file names")
     args = parser.parse_args()
 
     # Get directories as run list
     run_list = args.run_list
+    # Get suffix to names of output files
+    suffix = args.suffix
+    if suffix is not "":
+        suffix = "_" + suffix
 
     # Declare some lists
     latent_list = []
@@ -123,7 +128,7 @@ def main():
                  xlabel=sclabel, 
                  ylabel=ldlabel, 
                  clabel='$\sigma^{g}_{\\rho} / \sigma^{t}_{\\rho}$', 
-                 figname='dim50_final_sigma.png')
+                 figname='dim50_final_sigma%s.png'%suffix)
 
     # Final epoch KSd
     scatter_plot(x=dscale_list, y=latent_list, c=dvalue_list,
@@ -131,7 +136,7 @@ def main():
                  xlabel=sclabel, 
                  ylabel=ldlabel, 
                  clabel='KS$_D$', 
-                 figname='dim50_final_dvalue.png')
+                 figname='dim50_final_dvalue%s.png'%suffix)
    
     # Best sigma
     scatter_plot(x=dscale_list, y=latent_list, c=sigma_best_list,
@@ -139,7 +144,7 @@ def main():
                  xlabel=sclabel, 
                  ylabel=ldlabel, 
                  clabel='$\sigma^{g}_{\\rho} / \sigma^{t}_{\\rho}$', 
-                 figname='dim50_best_sigma.png')
+                 figname='dim50_best_sigma%s.png'%suffix)
 
     # Best KSd
     scatter_plot(x=dscale_list, y=latent_list, c=dvalue_best_list,
@@ -147,15 +152,15 @@ def main():
                  xlabel=sclabel, 
                  ylabel=ldlabel, 
                  clabel='KS$_D$', 
-                 figname='dim50_best_dvalue.png')
+                 figname='dim50_best_dvalue%s.png'%suffix)
 
     # Global optimum
     scatter_plot(x=dscale_list, y=latent_list, c=sum_best_list,
                  title='Min KS$_D + \sigma_{\\rho}$ per Run',
                  xlabel=sclabel, 
                  ylabel=ldlabel, 
-                 clabel='$\Sigma$ Normed Metrics', 
-                 figname='dim50_global_optimum.png')
+                 clabel='$\sum$ Max-Scaled Metrics', 
+                 figname='dim50_global_optimum%s.png'%suffix)
 
     # Identify global joint optimum from ALL runs
     idxmin = np.argmin(sum_best_list)
