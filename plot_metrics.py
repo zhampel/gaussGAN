@@ -10,7 +10,7 @@ try:
     import matplotlib.pyplot as plt
     from matplotlib import cm as cm
 
-    import pandas as pd
+    import pickle
 
     import re as re
     
@@ -61,18 +61,10 @@ def main():
     dvalue_best_list = []
     sum_best_list = []
 
-    # Theoretical sigma from true samples
-    n_samp = 1000
-    sigma_theo = 1/np.sqrt(n_samp)
-
     # Pass through run directories
     for irun_dir in run_list:
    
-        # Currently needed to extract scale parameter
-        int_vals = re.findall('\d+', irun_dir)
-        int_vals = [int(i) for i in int_vals]
-
-        train_deets = '%s/training_details.csv'%(irun_dir)
+        train_deets = '%s/training_details.pkl'%(irun_dir)
 
         # Skip if training file not found
         if not os.path.isfile(train_deets):
@@ -80,28 +72,25 @@ def main():
             continue
 
         # Read in training information from run
-        irun_df = pd.read_csv(train_deets)
+        ifile = open(train_deets, 'rb')
+        irun_df = pickle.load(ifile)
+        ifile.close()
         # Get data, latent dims and scale value
-        dim = irun_df['dim'][0]
-        latent_dim = irun_df['latent_dim'][0]
+        dim = irun_df['dim']
+        latent_dim = irun_df['latent_dim']
         # Grab scale value from name.... will put in training file next update
-        dscale = int_vals[1]
+        dscale = irun_df['scale_factor']
         # Get KS distance values
-        dvalues_str = irun_df['dvalues'][1]
-        dvalues_list = dvalues_str[1:-1].split(',')
-        dvalues = [float(val) for val in dvalues_list]
+        dvalues = irun_df['dvalues'][1]
         # Get Generated sigma fits
-        gen_fit_sigma_str = irun_df['gen_fit_sigma'][1]
-        gen_fit_sigma_list = gen_fit_sigma_str[1:-1].split(',')
-        # Normalize by theoretical sigma from true samples
-        gen_fit_sigma = [float(val)/sigma_theo for val in gen_fit_sigma_list]
+        gen_fit_sigma = irun_df['gen_fit_sigma'][1]
+        sigma_theo = irun_df['test_fit_sigma']
+        ## Normalize by theoretical sigma from true samples
+        gen_fit_sigma /= sigma_theo
 
         # Save latent and scale values
         latent_list.append(float(latent_dim))
         dscale_list.append(float(dscale))
-
-        #dvalues /= np.max(dvalues)
-        #gen_fit_sigma /= np.max(gen_fit_sigma)
 
         # Save final sigma and KS_D
         sigma_list.append(gen_fit_sigma[-1])

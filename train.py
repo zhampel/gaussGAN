@@ -13,7 +13,7 @@ try:
 
     import tables
 
-    import pandas as pd
+    import pickle
     
     from torch.autograd import Variable
     from torch.autograd import grad as torch_grad
@@ -33,7 +33,7 @@ try:
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
     from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm, sample_z
-    from gaussgan.plots import plot_train_loss, compare_histograms, plot_corr
+    from gaussgan.plots import plot_train_loss, plot_train_curves, compare_histograms, plot_corr
 except ImportError as e:
     print(e)
     raise ImportError
@@ -95,6 +95,11 @@ def main():
     run_dir = os.path.join(RUNS_DIR, run_name)
     samples_dir = os.path.join(run_dir, 'samples')
     models_dir = os.path.join(run_dir, 'models')
+    training_details_file = '%s/training_details.pkl'%(run_dir)
+    if os.path.isfile(training_details_file):
+        print('Training already performed. Please move or delete %s to re-run. Exiting...'%run_dir)
+        import sys
+        sys.exit()
 
     os.makedirs(run_dir, exist_ok=True)
     os.makedirs(samples_dir, exist_ok=True)
@@ -196,6 +201,8 @@ def main():
     dval_i = []
     pval_i = []
     gen_fit_sigma_list = []
+    disc_g_mean = []
+    disc_r_mean = []
     
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
@@ -271,6 +278,10 @@ def main():
             # Save training losses
             d_l.append(d_loss.item())
             g_l.append(g_loss.item())
+
+            # Save mean of discriminator outputs
+            disc_r_mean.append(D_real.mean().item())
+            disc_g_mean.append(1-D_gen.mean().item())
    
         # Generator in eval mode
         generator.eval()
@@ -388,76 +399,88 @@ def main():
         
 
     # Save training results
-    train_df = pd.DataFrame({
-                             'dim' : dim,
-                             'n_epochs' : n_epochs,
-                             'learning_rate' : lr,
-                             'beta_1' : b1,
-                             'beta_2' : b2,
-                             'weight_decay' : decay,
-                             'n_skip_iter' : n_skip_iter,
-                             'latent_dim' : latent_dim,
-                             'latent_sigma' : latent_sigma,
-                             'wass_metric' : wass_metric,
-                             'scale_factor' : dscale,
-                             'gen_loss' : ['G', g_l],
-                             'disc_loss' : ['D', d_l],
-                             'pvalues' : ['pvals', pval_i],
-                             'dvalues' : ['dvals', dval_i],
-                             'true_corr' : ['test_corr', test_corr],
-                             'gen_corr' : ['gen_corr', gen_corr],
-                             'true_xcorr' : ['test_corr_hist', test_corr_hist],
-                             'gen_xcorr' : ['gen_corr_hist', gen_corr_hist],
-                             'n_test_samples' : n_test_samples,
-                             'test_fit_sigma' : test_fit_sigma,
-                             'gen_fit_sigma' : ['gen_sigma' , gen_fit_sigma_list],
-                            })
+    train_df = {
+                'data_file' : data_file,
+                'dim' : dim,
+                'n_epochs' : n_epochs,
+                'batch_size' : batch_size,
+                'learning_rate' : lr,
+                'beta_1' : b1,
+                'beta_2' : b2,
+                'weight_decay' : decay,
+                'n_skip_iter' : n_skip_iter,
+                'latent_dim' : latent_dim,
+                'latent_sigma' : latent_sigma,
+                'wass_metric' : wass_metric,
+                'scale_factor' : dscale,
+                'gen_loss' : ['G(z)', g_l],
+                'disc_loss' : ['D(x)', d_l],
+                'disc_r_mean' : ['D(x)', disc_r_mean],
+                'disc_g_mean' : ['1-D(G(z))', disc_g_mean],
+                'pvalues' : ['pvals', pval_i],
+                'dvalues' : ['dvals', dval_i],
+                'true_corr' : ['test_corr', test_corr],
+                'gen_corr' : ['gen_corr', gen_corr],
+                'true_xcorr' : ['test_corr_hist', test_corr_hist],
+                'gen_xcorr' : ['gen_corr_hist', gen_corr_hist],
+                'n_test_samples' : n_test_samples,
+                'test_fit_sigma' : test_fit_sigma,
+                'gen_fit_sigma' : ['gen_sigma' , gen_fit_sigma_list],
+               }
 
-    train_df.to_csv('%s/training_details.csv'%(run_dir))
+    fjson = open(training_details_file, 'wb')
+    pickle.dump(train_df, fjson)
+    fjson.close()
 
 
-    # Plot some training results
-    plot_train_loss(df=train_df,
-                    arr_list=['gen_loss', 'disc_loss'],
-                    figname='%s/training_model_losses.png'%(run_dir)
-                    )
+    ## Plot some training results
+    #plot_train_loss(df=train_df,
+    #                arr_list=['gen_loss', 'disc_loss'],
+    #                figname='%s/training_model_losses.png'%(run_dir)
+    #                )
+    #
+    ## Plot some training results
+    #plot_train_curves(df=train_df,
+    #                  arr_list=['gen_loss', 'disc_loss', 'disc_r_mean', 'disc_g_mean'],
+    #                  figname='%s/training_model_curves.png'%(run_dir)
+    #                  )
 
     
-    # Plot results of xcorr fit 
-    figname='%s/training_sigmaxcorr.png'%(run_dir)
-    fig = plt.figure(figsize=(9,6))
-    mpl.rc("font", family="serif")
-    ax = fig.add_subplot(111)
-    epochs = range(0, n_epochs)
-    # D-Values
-    ax.plot(epochs, gen_fit_sigma_list / test_fit_sigma, color='b', marker='o', linewidth=0)
-    ax.set_ylabel(r'$\sigma^{g}_{\rho} / \sigma^{t}_{\rho}$', fontsize=16)
-    ax.set_xlabel(r'Epoch')
-    ax.set_title(r'Cross Corr. Width Ratio for $N=%i$ samples'%n_test_samples)
-    fig.tight_layout()
-    fig.savefig(figname)
+    ## Plot results of xcorr fit 
+    #figname='%s/training_sigmaxcorr.png'%(run_dir)
+    #fig = plt.figure(figsize=(9,6))
+    #mpl.rc("font", family="serif")
+    #ax = fig.add_subplot(111)
+    #epochs = range(0, n_epochs)
+    ## D-Values
+    #ax.plot(epochs, gen_fit_sigma_list / test_fit_sigma, color='b', marker='o', linewidth=0)
+    #ax.set_ylabel(r'$\sigma^{g}_{\rho} / \sigma^{t}_{\rho}$', fontsize=16)
+    #ax.set_xlabel(r'Epoch')
+    #ax.set_title(r'Cross Corr. Width Ratio for $N=%i$ samples'%n_test_samples)
+    #fig.tight_layout()
+    #fig.savefig(figname)
 
 
-    # Plot results of KS test 
-    figname='%s/training_kstest.png'%(run_dir)
-    fig = plt.figure(figsize=(9,6))
-    mpl.rc("font", family="serif")
-    axd = fig.add_subplot(111)
-    epochs = range(0, n_epochs)
-    # D-Values
-    axd.plot(epochs, dval_i, label=r'$KS_{D}$', color='b', marker='o', linewidth=0)
-    axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
-    axd.tick_params('y', colors='b')
-    axd.set_xlabel(r'Epoch')
-    axd.set_title(r'KS Test on Euclidean Norm')
-    # P-Values
-    axp = axd.twinx()
-    axd.plot(epochs, pval_i, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
-    axp.set_ylim(0, 1.1*max(pval_i))
-    axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
-    axp.tick_params('y', colors='r')
-    fig.tight_layout()
-    fig.savefig(figname)
+    ## Plot results of KS test 
+    #figname='%s/training_kstest.png'%(run_dir)
+    #fig = plt.figure(figsize=(9,6))
+    #mpl.rc("font", family="serif")
+    #axd = fig.add_subplot(111)
+    #epochs = range(0, n_epochs)
+    ## D-Values
+    #axd.plot(epochs, dval_i, label=r'$KS_{D}$', color='b', marker='o', linewidth=0)
+    #axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
+    #axd.tick_params('y', colors='b')
+    #axd.set_xlabel(r'Epoch')
+    #axd.set_title(r'KS Test on Euclidean Norm')
+    ## P-Values
+    #axp = axd.twinx()
+    #axd.plot(epochs, pval_i, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
+    #axp.set_ylim(0, 1.1*max(pval_i))
+    #axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
+    #axp.tick_params('y', colors='r')
+    #fig.tight_layout()
+    #fig.savefig(figname)
 
 
     # Save current state of trained models

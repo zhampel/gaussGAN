@@ -12,7 +12,7 @@ try:
     import matplotlib.pyplot as plt
     from matplotlib import cm as cm
 
-    from gaussgan.utils import gaussian
+    from gaussgan.utils import gaussian, smooth
     
 except ImportError as e:
     print(e)
@@ -129,12 +129,60 @@ def plot_train_loss(df=[], arr_list=[''], figname='training_loss.png'):
         vals = df[arr][1]
         n_iter = len(vals)
         epochs = np.linspace(0., np.float(n_epochs), num=n_iter)
-        ax.plot(epochs, vals, label=r'%s'%(label), marker='o', markersize=3, linewidth=0)
+        ax.plot(epochs, vals, label=r'$%s$'%(label), marker='o', markersize=3, linewidth=0)
     
-    ax.set(xlabel='Epoch', ylabel='Loss',
-           title='Loss vs Training Epoch')
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Loss')
+    ax.set_title(r'Training Losses $(n=%i,\ d=%i,\ f=%i)$'%(df['dim'][0], df['latent_dim'][0], df['scale_factor'][0]))
     ax.grid()
     plt.legend(loc='upper right', fontsize=16)
+    print(figname)
+    plt.tight_layout()
+    fig.savefig(figname)
+
+
+def plot_train_curves(df=[], arr_list=[''], figname='training_curves.png'):
+
+    n_epochs = df['n_epochs']
+    loss_list = [v for v in arr_list if 'loss' in v]
+    mean_list = [v for v in arr_list if 'mean' in v]
+
+    cidx = 0
+    fig, axl = plt.subplots(figsize=(16,10))
+    for arr in loss_list:
+        label = df[arr][0]
+        vals = df[arr][1]
+        n_iter = len(vals)
+        epochs = np.linspace(0., np.float(n_epochs), num=n_iter)
+        axl.plot(epochs, vals, label=r'$%s$'%(label), marker='o', markersize=1, linewidth=0, alpha=0.25, color=colors[cidx])
+        #smoothed = smooth(x=np.asarray(vals), window_len=10, window='flat')
+        smoothed = smooth(x=np.asarray(vals), window_len=2*df['batch_size'], window='flat')
+        axl.plot(np.linspace(0., np.float(n_epochs), num=len(smoothed)), smoothed, '--', linewidth=1, color=colors[cidx])
+        cidx += 1
+
+    axl.set_ylabel('Loss')
+    axl.set_xlabel('Epoch')
+    axl.set_title(r'Training Curves $(n=%i,\ d=%i,\ f=%i)$'%(df['dim'], df['latent_dim'], df['scale_factor']))
+    axl.grid()
+    axl.legend(loc='upper left', title='Loss', fontsize=16)
+
+    axm = axl.twinx()
+    for arr in mean_list:
+        label = df[arr][0]
+        vals = df[arr][1]
+        n_iter = len(vals)
+        epochs = np.linspace(0., np.float(n_epochs), num=n_iter)
+        axm.plot(epochs, vals, label=r'$%s$'%(label), marker='s', markersize=2, linewidth=0, alpha=0.25, color=colors[cidx])
+        #smoothed = smooth(x=np.asarray(vals), window_len=10, window='flat')
+        smoothed = smooth(x=np.asarray(vals), window_len=2*df['batch_size'], window='flat')
+        axm.plot(np.linspace(0., np.float(n_epochs), num=len(smoothed)), smoothed, '-', linewidth=1, color=colors[cidx])
+        cidx += 1
+
+    axm.set_ylim(0, 1)
+    axm.set_ylabel(r'$\overline{D}(x)$')
+    axm.legend(loc='upper right', title='Disc. Out', fontsize=16)
+    
+    #plt.legend(loc='upper right', fontsize=16)
     print(figname)
     plt.tight_layout()
     fig.savefig(figname)
