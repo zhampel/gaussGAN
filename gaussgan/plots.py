@@ -121,7 +121,11 @@ def plot_histogram(hist=None, centers=None, label=None, figname=None):
 
 def plot_train_loss(df=[], arr_list=[''], figname='training_loss.png'):
 
-    n_epochs = df['n_epochs'][0]
+    # Get data, latent dims and scale value
+    dim = df['dim']
+    n_epochs = df['n_epochs']
+    latent_dim = df['latent_dim']
+    dscale = df['scale_factor']
 
     fig, ax = plt.subplots(figsize=(16,10))
     for arr in arr_list:
@@ -129,11 +133,12 @@ def plot_train_loss(df=[], arr_list=[''], figname='training_loss.png'):
         vals = df[arr][1]
         n_iter = len(vals)
         epochs = np.linspace(0., np.float(n_epochs), num=n_iter)
-        ax.plot(epochs, vals, label=r'$%s$'%(label), marker='o', markersize=3, linewidth=0)
+        ax.plot(epochs, vals, label=r'$%s$'%label, marker='o', markersize=3, linewidth=0)
     
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Loss')
-    ax.set_title(r'Training Losses $(n=%i,\ d=%i,\ f=%i)$'%(df['dim'][0], df['latent_dim'][0], df['scale_factor'][0]))
+    ax.set_title(r'Training Losses $(n=%i,\ d=%i,\ f=%i)$'%(dim, latent_dim, dscale))
+    #ax.set_title(r'Training Losses $(n=%i,\ d=%i,\ f=%i)$'%(df['dim'], df['latent_dim'], df['scale_factor']))
     ax.grid()
     plt.legend(loc='upper right', fontsize=16)
     print(figname)
@@ -186,3 +191,24 @@ def plot_train_curves(df=[], arr_list=[''], figname='training_curves.png'):
     print(figname)
     plt.tight_layout()
     fig.savefig(figname)
+
+
+
+def plot_component_ks(figname='ks_epoch00000.png', epoch=0, dim=1, ks_d_list=[], ks_p_list=[]):
+
+    fig = plt.figure(figsize=(9,6))
+    mpl.rc("font", family="serif")
+    axd = fig.add_subplot(111)
+    # D-Values
+    axd.step(np.arange(-0.5, dim+0.5, 1), ks_d_list, c='k', where='post')
+    axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$')
+    axd.set_xlabel(r'Vector Component')
+    axd.set_title(r'KS Test for Each Component at Epoch %i'%epoch)
+    # P-Values
+    axp = axd.twinx()
+    axp.step(np.arange(-0.5, dim+0.5, 1), ks_p_list, c='r', where='post')
+    axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
+    axp.tick_params('y', colors='r')
+    fig.tight_layout()
+    fig.savefig(figname)
+

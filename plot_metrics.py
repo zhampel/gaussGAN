@@ -35,6 +35,7 @@ def scatter_plot(x=[], y=[], c=[], title='', xlabel='', ylabel='', clabel='', fi
     cbar = plt.colorbar(sc)
     cbar.set_label(r'%s'%clabel, fontsize=16)
     fig.tight_layout()
+    print(figname)
     fig.savefig(figname)
 
 
@@ -153,7 +154,7 @@ def main():
 
     # Identify global joint optimum from ALL runs
     idxmin = np.argmin(sum_best_list)
-    print("Global Optimum:")
+    print("\n\nGlobal Optimum:")
     print("Scale Factor: %.1f"%dscale_list[idxmin])
     print("Latent Dim: %i"%latent_list[idxmin])
     print("Sigma Ratio: %.04f"%sigma_best_list[idxmin])

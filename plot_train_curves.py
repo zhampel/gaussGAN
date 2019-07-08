@@ -64,26 +64,12 @@ def main():
         plot_train_curves(df=irun_df,
                           arr_list=['gen_loss', 'disc_loss', 'disc_r_mean', 'disc_g_mean'],
                           figname='%s/training_model_curves.png'%(irun_dir)
-                          )
+                         )
 
-        # Plot training curve
-        fig, ax = plt.subplots(figsize=(16,10))
-        arr_list=['gen_loss', 'disc_loss']
-        figname='%s/training_model_losses.png'%(irun_dir)
-        for arr in arr_list:
-            label = irun_df[arr][0]
-            vals = irun_df[arr][1]
-            n_iter = len(vals)
-            epochs = np.linspace(0., np.float(n_epochs), num=n_iter)
-            ax.plot(epochs, vals, label=r'$%s$'%label, marker='o', markersize=3, linewidth=0)
-        ax.set_xlabel('Epoch')
-        ax.set_ylabel('Loss')
-        ax.set_title(r'Training Losses $(n=%i,\ d=%i,\ f=%i)$'%(dim, latent_dim, dscale))
-        ax.grid()
-        plt.legend(loc='upper right', fontsize=16)
-        print(figname)
-        plt.tight_layout()
-        fig.savefig(figname)
+        plot_train_loss(df=irun_df,
+                        arr_list=['gen_loss', 'disc_loss'],
+                        figname='%s/training_model_losses.png'%(irun_dir)
+                       )
 
 
         # Plot results of xcorr fit 
@@ -98,6 +84,7 @@ def main():
         ax.set_xlabel(r'Epoch')
         ax.set_title(r'Cross Corr. Width Ratio for $N=%i$ samples'%n_test_samples)
         fig.tight_layout()
+        print(figname)
         fig.savefig(figname)
 
 
@@ -120,6 +107,7 @@ def main():
         axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
         axp.tick_params('y', colors='r')
         fig.tight_layout()
+        print(figname)
         fig.savefig(figname)
 
 

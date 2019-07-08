@@ -33,7 +33,7 @@ try:
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
     from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm, sample_z
-    from gaussgan.plots import plot_train_loss, plot_train_curves, compare_histograms, plot_corr
+    from gaussgan.plots import plot_train_loss, plot_train_curves, compare_histograms, plot_corr, plot_component_ks
 except ImportError as e:
     print(e)
     raise ImportError
@@ -319,10 +319,6 @@ def main():
             #plt.yscale('log')
             plt.axis('off')
             
-        for idim in range(dim):
-            dval, pval = stats.ks_2samp(gen_data_numpy[:, idim], test_data_numpy[:, idim])
-            ks_d_list.append(dval)
-            ks_p_list.append(pval)
        
         # Label color scheme in title at bottom of figure
         fig.text(0.5, 0.03, 'Epoch %i'%epoch, ha='center', fontsize=16, color='k')
@@ -331,8 +327,14 @@ def main():
         fig.text(0.5, 0.0125, tactext, ha='center', fontsize=16, color='k')
 
         plt.tight_layout()
-        fig.savefig('%s'%figname)
- 
+        fig.savefig(figname)
+
+        # Perform KS test for individual components
+        for idim in range(dim):
+            dval, pval = stats.ks_2samp(gen_data_numpy[:, idim], test_data_numpy[:, idim])
+            ks_d_list.append(dval)
+            ks_p_list.append(pval)
+       
 
         # Hack for step plot
         ks_d_list.append(ks_d_list[-1])
@@ -340,21 +342,10 @@ def main():
 
         # Save results of KS test to figure
         figname = '%s/ks_epoch%05i.png'%(samples_dir, epoch)
-        fig = plt.figure(figsize=(9,6))
-        mpl.rc("font", family="serif")
-        axd = fig.add_subplot(111)
-        # D-Values
-        axd.step(np.arange(-0.5, dim+0.5, 1), ks_d_list, c='k', where='post')
-        axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$')
-        axd.set_xlabel(r'Vector Component')
-        axd.set_title(r'KS Test for Each Component at Epoch %i'%epoch)
-        # P-Values
-        axp = axd.twinx()
-        axp.step(np.arange(-0.5, dim+0.5, 1), ks_p_list, c='r', where='post')
-        axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
-        axp.tick_params('y', colors='r')
-        fig.tight_layout()
-        fig.savefig(figname)
+        plot_component_ks(figname=figname, epoch=epoch, dim=dim,
+                          ks_d_list=ks_d_list,
+                          ks_p_list=ks_p_list
+                         )
 
 
         # Plot generated data correlation matrix
@@ -396,7 +387,7 @@ def main():
                                                                    g_loss.item(),
                                                                    pval)
               )
-        
+ 
 
     # Save training results
     train_df = {
@@ -431,56 +422,6 @@ def main():
     fjson = open(training_details_file, 'wb')
     pickle.dump(train_df, fjson)
     fjson.close()
-
-
-    ## Plot some training results
-    #plot_train_loss(df=train_df,
-    #                arr_list=['gen_loss', 'disc_loss'],
-    #                figname='%s/training_model_losses.png'%(run_dir)
-    #                )
-    #
-    ## Plot some training results
-    #plot_train_curves(df=train_df,
-    #                  arr_list=['gen_loss', 'disc_loss', 'disc_r_mean', 'disc_g_mean'],
-    #                  figname='%s/training_model_curves.png'%(run_dir)
-    #                  )
-
-    
-    ## Plot results of xcorr fit 
-    #figname='%s/training_sigmaxcorr.png'%(run_dir)
-    #fig = plt.figure(figsize=(9,6))
-    #mpl.rc("font", family="serif")
-    #ax = fig.add_subplot(111)
-    #epochs = range(0, n_epochs)
-    ## D-Values
-    #ax.plot(epochs, gen_fit_sigma_list / test_fit_sigma, color='b', marker='o', linewidth=0)
-    #ax.set_ylabel(r'$\sigma^{g}_{\rho} / \sigma^{t}_{\rho}$', fontsize=16)
-    #ax.set_xlabel(r'Epoch')
-    #ax.set_title(r'Cross Corr. Width Ratio for $N=%i$ samples'%n_test_samples)
-    #fig.tight_layout()
-    #fig.savefig(figname)
-
-
-    ## Plot results of KS test 
-    #figname='%s/training_kstest.png'%(run_dir)
-    #fig = plt.figure(figsize=(9,6))
-    #mpl.rc("font", family="serif")
-    #axd = fig.add_subplot(111)
-    #epochs = range(0, n_epochs)
-    ## D-Values
-    #axd.plot(epochs, dval_i, label=r'$KS_{D}$', color='b', marker='o', linewidth=0)
-    #axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
-    #axd.tick_params('y', colors='b')
-    #axd.set_xlabel(r'Epoch')
-    #axd.set_title(r'KS Test on Euclidean Norm')
-    ## P-Values
-    #axp = axd.twinx()
-    #axd.plot(epochs, pval_i, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
-    #axp.set_ylim(0, 1.1*max(pval_i))
-    #axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
-    #axp.tick_params('y', colors='r')
-    #fig.tight_layout()
-    #fig.savefig(figname)
 
 
     # Save current state of trained models
