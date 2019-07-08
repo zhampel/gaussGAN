@@ -42,7 +42,7 @@ class Generator(nn.Module):
     Input is a vector from representation space of dimension z_dim
     output is a vector from image space of dimension X_dim
     """
-    def __init__(self, latent_dim, x_dim, dscale=10, verbose=False):
+    def __init__(self, latent_dim, x_dim, dscale=1, verbose=False):
         super(Generator, self).__init__()
 
         self.name = 'generator'
@@ -50,27 +50,34 @@ class Generator(nn.Module):
         self.x_dim = x_dim
         self.verbose = verbose
         self.dscale = dscale
-        self.ten_x_lat = int(dscale*self.latent_dim)
-        self.ten_x_dim = int(dscale*self.x_dim)
+        self.scaled_x_lat = int(dscale*self.latent_dim)
+        self.scaled_x_dim = int(dscale*self.x_dim)
         
         self.model = nn.Sequential(
             # Fully connected layers
-            torch.nn.Linear(self.latent_dim, self.ten_x_lat),
-            nn.BatchNorm1d(self.ten_x_lat),
-            #torch.nn.Linear(self.latent_dim, 512),
-            #nn.BatchNorm1d(512),
-            #torch.nn.ReLU(True),
+            torch.nn.Linear(self.latent_dim, self.scaled_x_lat),
+            torch.nn.Dropout(0.2),
+            #nn.BatchNorm1d(self.scaled_x_lat),
+            ##torch.nn.Linear(self.latent_dim, 512),
+            ##nn.BatchNorm1d(512),
+            ##torch.nn.ReLU(True),
             nn.LeakyReLU(0.2, inplace=True),
 
-            torch.nn.Linear(self.ten_x_lat, 512),
-            nn.BatchNorm1d(512),
+            #torch.nn.Linear(self.scaled_x_lat, 512),
+            #nn.BatchNorm1d(512),
+            #nn.LeakyReLU(0.2, inplace=True),
+            torch.nn.Linear(self.scaled_x_lat, self.scaled_x_lat),
+            torch.nn.Dropout(0.2),
+            #nn.BatchNorm1d(self.scaled_x_lat),
             nn.LeakyReLU(0.2, inplace=True),
             
-            torch.nn.Linear(512, self.ten_x_dim),
-            nn.BatchNorm1d(self.ten_x_dim),
+            #torch.nn.Linear(512, self.scaled_x_dim),
+            torch.nn.Linear(self.scaled_x_lat, self.scaled_x_dim),
+            torch.nn.Dropout(0.2),
+            #nn.BatchNorm1d(self.scaled_x_dim),
             nn.LeakyReLU(0.2, inplace=True),
             
-            torch.nn.Linear(self.ten_x_dim, x_dim),
+            torch.nn.Linear(self.scaled_x_dim, x_dim),
         )
 
         initialize_weights(self)
@@ -92,21 +99,24 @@ class Discriminator(nn.Module):
     Input is tuple (X) of an image vector.
     Output is a 1-dimensional value
     """            
-    def __init__(self, dim, wass_metric=False, verbose=False):
+    def __init__(self, dim, dscale=1, wass_metric=False, verbose=False):
         super(Discriminator, self).__init__()
         
         self.name = 'discriminator'
         self.wass = wass_metric
         self.dim = dim
         self.verbose = verbose
-        self.ten_x_dim = 10*self.dim
+        self.dscale = dscale
+        self.scaled_x_dim = int(dscale*self.dim)
         
         self.model = nn.Sequential(
-            nn.Linear(self.dim, self.ten_x_dim),
+            nn.Linear(self.dim, self.scaled_x_dim),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(self.ten_x_dim, 512),
+            torch.nn.Dropout(0.2),
+            nn.Linear(self.scaled_x_dim, 512),
             nn.LeakyReLU(0.2, inplace=True),
-            #nn.Linear(self.ten_x_dim, 1024),
+            torch.nn.Dropout(0.2),
+            #nn.Linear(self.scaled_x_dim, 1024),
             #nn.LeakyReLU(0.2, inplace=True),
             #nn.Linear(1024, 512),
             #nn.LeakyReLU(0.2, inplace=True),
@@ -114,10 +124,12 @@ class Discriminator(nn.Module):
             # Fully connected layers
             torch.nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
+            torch.nn.Dropout(0.2),
             
             # Fully connected layers
             torch.nn.Linear(256, 128),
             nn.LeakyReLU(0.2, inplace=True),
+            torch.nn.Dropout(0.2),
             torch.nn.Linear(128, 1),
         )
         
