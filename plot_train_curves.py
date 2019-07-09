@@ -99,7 +99,7 @@ def main():
         axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
         axd.tick_params('y', colors='b')
         axd.set_xlabel(r'Epoch')
-        axd.set_title(r'KS Test and Cross Corr. Width Ratio')
+        axd.set_title(r'KS Test on Euclidean Norm')
         # P-Values
         axp = axd.twinx()
         axp.plot(epochs, pvalues, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
@@ -122,7 +122,7 @@ def main():
         axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
         axd.tick_params('y', colors='b')
         axd.set_xlabel(r'Epoch')
-        axd.set_title(r'KS Test on Euclidean Norm')
+        axd.set_title(r'KS Test and Cross Corr. Width Ratio')
         # P-Values
         axp = axd.twinx()
         axp.plot(epochs, gen_fit_sigma, color='r', marker='s', linewidth=0)
