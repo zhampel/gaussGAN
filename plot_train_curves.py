@@ -102,7 +102,7 @@ def main():
         axd.set_title(r'KS Test on Euclidean Norm')
         # P-Values
         axp = axd.twinx()
-        axd.plot(epochs, pvalues, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
+        axp.plot(epochs, pvalues, label=r'$KS_{p}$', color='r', marker='s', linewidth=0)
         axp.set_ylim(0, 1.1*max(pvalues))
         axp.set_ylabel(r'$\mathrm{KS}_{\mathrm{p}}$', color='r')
         axp.tick_params('y', colors='r')
@@ -110,6 +110,27 @@ def main():
         print(figname)
         fig.savefig(figname)
 
+        
+        # Plot results of KS test 
+        figname='%s/training_ksd_sxcorr.png'%(irun_dir)
+        fig = plt.figure(figsize=(9,6))
+        mpl.rc("font", family="serif")
+        axd = fig.add_subplot(111)
+        epochs = range(0, n_epochs)
+        # D-Values
+        axd.plot(epochs, dvalues, label=r'$KS_{D}$', color='b', marker='o', linewidth=0)
+        axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
+        axd.tick_params('y', colors='b')
+        axd.set_xlabel(r'Epoch')
+        axd.set_title(r'KS Test on Euclidean Norm')
+        # P-Values
+        axp = axd.twinx()
+        axp.plot(epochs, gen_fit_sigma, color='r', marker='s', linewidth=0)
+        axp.set_ylabel(r'$\sigma^{g}_{\rho} / \sigma^{t}_{\rho}$', fontsize=16, color='r')
+        axp.tick_params('y', colors='r')
+        fig.tight_layout()
+        print(figname)
+        fig.savefig(figname)
 
     
 
