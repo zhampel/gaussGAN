@@ -122,7 +122,7 @@ def main():
         axd.set_ylabel(r'$\mathrm{KS}_{\mathrm{D}}$', color='b')
         axd.tick_params('y', colors='b')
         axd.set_xlabel(r'Epoch')
-        axd.set_title(r'KS Test and Cross Corr. Width Ratio')
+        axd.set_title(r'$\mathrm{KS}_{\mathrm{D}}$, $\sigma^{g,t}_{\rho}$ Ratio $(n=%i,\ d=%i,\ f=%i)$'%(irun_df['dim'], irun_df['latent_dim'], irun_df['scale_factor']))
         # P-Values
         axp = axd.twinx()
         axp.plot(epochs, gen_fit_sigma, color='r', marker='s', linewidth=0)
