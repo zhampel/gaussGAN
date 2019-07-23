@@ -34,7 +34,9 @@ class GaussDataset(Dataset):
         """
         self.file_name = file_name
         self.transform = transform
-        self.data_file = self.load_file()
+        #self.data_file = self.load_file()
+        self.dataset_len = self.load_file()
+        self.datatable = None
 
     def load_file(self):
         assert os.path.isfile(self.file_name), "Dataset file %s dne. Exiting..."%self.file_name
@@ -48,23 +50,31 @@ class GaussDataset(Dataset):
         self.sigma = meta_data.sigma[0]
         self.xlo = meta_data.xlo[0]
         self.xhi = meta_data.xhi[0]
-        return data_file
+        #return data_file
+        dataset_len = data_file.root.data.shape[0]
+        data_file.close()
+        return dataset_len
 
     def __len__(self):
-        return self.data_file.root.data.shape[0]
+        #return self.data_file.root.data.shape[0]
+        return self.dataset_len
 
     def __getitem__(self, idx):
-        sample = self.data_file.root.data[idx,:]
-        return sample
+        #sample = self.data_file.root.data[idx,:]
+        #return sample
+        if self.datatable is None:
+            self.datatable = tables.open_file(self.file_name, mode='r')
+        return self.datatable.root.data[idx]
 
 
 
-def get_dataloader(dataset=None, batch_size=64, train_set=True):
+def get_dataloader(dataset=None, batch_size=64, train_set=True, num_workers=1):
     """
     Function to provide a DataLoader given a dataset.
     """
     dataloader = torch.utils.data.DataLoader(
-        dataset, 
+        dataset,
+        num_workers=num_workers,
         batch_size=batch_size,
         shuffle=True)
 

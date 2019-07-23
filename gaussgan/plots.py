@@ -20,7 +20,7 @@ except ImportError as e:
 
 colors = ['k', 'r', 'b', 'm']
 ncols = len(colors)
-mpl.rc("font", family="serif", size=14)
+mpl.rc("font", family="serif", size=16)
 
 def plot_corr(corr=None, figname='', title='', comp_hist=None):
 

@@ -50,10 +50,12 @@ def main():
     parser.add_argument("-c", "--dscale", dest="dscale", default=10, type=int, help="Model scaling parameter")
     parser.add_argument("-w", "--wass_metric", dest="wass_metric", action='store_true', help="Flag for Wasserstein metric")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
+    parser.add_argument("-r", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
     args = parser.parse_args()
 
     data_file = args.data_file
     device_id = args.gpu
+    num_workers = args.num_workers
 
     # Access saved dataset
     dataset = GaussDataset(file_name=data_file)
@@ -79,7 +81,7 @@ def main():
     b2 = 0.9 #99
     decay = 2.5*1e-5
     n_skip_iter = 5
-    #n_skip_iter = 1 #5
+    #n_skip_iter = 1
 
     # Wasserstein metric flag
     wass_metric = args.wass_metric
@@ -131,7 +133,7 @@ def main():
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     
     # Configure training data loader
-    dataloader = get_dataloader(dataset=dataset, batch_size=batch_size)
+    dataloader = get_dataloader(dataset=dataset, batch_size=batch_size, train_set=True, num_workers=num_workers)
 
     # Test dataset
     n_test_samples = 1000
