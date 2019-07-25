@@ -24,9 +24,9 @@ The figure below is meant as a guide in order to keep track of distribution spac
 
 ## Generate Data
 
-To generate some n-dimensional data, use the `gen-samples.py` script:
+To generate some n-dimensional data, use the `make-dataset.py` script:
 ```
-python gen-samples.py -n 1000 -s gauss -b 10 -d 1 2 10
+python make-dataset.py -n 1000 -s gauss -b 10 -d 1 2 10
 ```
 
 where `-n` gives the samples per batch, `-s` specifies the parent distribution (options: gauss, trunc_gauss, cauchy, uniform),
