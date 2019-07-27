@@ -34,7 +34,6 @@ class GaussDataset(Dataset):
         """
         self.file_name = file_name
         self.transform = transform
-        #self.data_file = self.load_file()
         self.dataset_len = self.load_file()
         self.datatable = None
 
@@ -50,18 +49,14 @@ class GaussDataset(Dataset):
         self.sigma = meta_data.sigma[0]
         self.xlo = meta_data.xlo[0]
         self.xhi = meta_data.xhi[0]
-        #return data_file
         dataset_len = data_file.root.data.shape[0]
         data_file.close()
         return dataset_len
 
     def __len__(self):
-        #return self.data_file.root.data.shape[0]
         return self.dataset_len
 
     def __getitem__(self, idx):
-        #sample = self.data_file.root.data[idx,:]
-        #return sample
         if self.datatable is None:
             self.datatable = tables.open_file(self.file_name, mode='r')
         return self.datatable.root.data[idx]
