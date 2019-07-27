@@ -41,7 +41,7 @@ def scatter_plot(x=[], y=[], c=[], title='', xlabel='', ylabel='', clabel='', fi
 
 def main():
     global args
-    parser = argparse.ArgumentParser(description="GAN metric plotting script")
+    parser = argparse.ArgumentParser(description="GAN ensemble metric plotting script")
     parser.add_argument("-r", "--run_list", dest="run_list", nargs="+", help="List of runs")
     parser.add_argument("-s", "--suffix", dest="suffix", default="", help="Suffix to figure file names")
     args = parser.parse_args()
@@ -97,8 +97,8 @@ def main():
         sigma_list.append(gen_fit_sigma[-1])
         dvalue_list.append(dvalues[-1])
     
-        # Combine normalized sigmas and KSDs to find global optimum of run
-        sum_array = (gen_fit_sigma/np.max(gen_fit_sigma) + dvalues/np.max(dvalues))/2
+        # Combine normalized sigmas and KSDs to find global optimum (min) of run
+        sum_array = (gen_fit_sigma * dvalues)
         idxmin = np.argmin(sum_array)
 
         # Save joint optimal sigma and KS_D, joint value
@@ -146,10 +146,10 @@ def main():
 
     # Global optimum
     scatter_plot(x=dscale_list, y=latent_list, c=sum_best_list,
-                 title='Min KS$_D + \sigma_{\\rho}$ per Run',
+                 title='Optimal (Min) KS$_D \\times \sigma_{\\rho}$ per Run',
                  xlabel=sclabel, 
                  ylabel=ldlabel, 
-                 clabel='$\sum$ Max-Scaled Metrics', 
+                 clabel='$\min$ KS$_D \\times \sigma_{\\rho}$', 
                  figname='dim50_global_optimum%s.png'%suffix)
 
     # Identify global joint optimum from ALL runs
