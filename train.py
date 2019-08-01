@@ -32,7 +32,7 @@ try:
     from gaussgan.definitions import RUNS_DIR
     from gaussgan.datasets import get_dataloader, GaussDataset
     from gaussgan.models import Generator, Discriminator
-    from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm, sample_z
+    from gaussgan.utils import save_model, calc_gradient_penalty, Sampler, enorm, sample_z, corr2_coeff
     from gaussgan.plots import plot_train_loss, plot_train_curves, compare_histograms, plot_corr, plot_component_ks
 except ImportError as e:
     print(e)
@@ -51,6 +51,7 @@ def main():
     parser.add_argument("-w", "--wass_metric", dest="wass_metric", action='store_true', help="Flag for Wasserstein metric")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("-r", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
+    parser.add_argument("-p", "-–postfix", dest="postfix", default="", help="Suffix run name for directory")
     args = parser.parse_args()
 
     data_file = args.data_file
@@ -88,11 +89,16 @@ def main():
     mtype = 'van'
     if (wass_metric):
         mtype = 'wass'
-    
+
     # Make directory structure for this run
     sep_und = '_'
-    run_name_comps = [dist_name, 'dim%s'%str(dim), 'c%s'%str(dscale), 'z%s'%str(latent_dim), 's%s'%str(latent_sigma), mtype]
+    run_name_comps = [dist_name, 'dim%s'%str(dim), 'c%s'%str(dscale), 'z%s'%str(latent_dim), 's%s'%str(latent_sigma), mtype, 'bs%i'%batch_size]
     run_name = sep_und.join(run_name_comps)
+
+    # Run name suffix
+    postfix = args.postfix
+    if not postfix == "":
+        run_name = os.path.join(run_name, sep_und, postfix)
 
     run_dir = os.path.join(RUNS_DIR, run_name)
     samples_dir = os.path.join(run_dir, 'samples')
@@ -133,10 +139,29 @@ def main():
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     
     # Configure training data loader
-    dataloader = get_dataloader(dataset=dataset, batch_size=batch_size, train_set=True, num_workers=num_workers)
+    dataloader = get_dataloader(dataset=dataset,
+                                batch_size=batch_size,
+                                train_set=True,
+                                num_workers=num_workers)
+    
+    # Sample from training set
+    n_train_samples = 100
+    train_dataloader = get_dataloader(dataset=dataset,
+                                      batch_size=n_train_samples,
+                                      train_set=True,
+                                      num_workers=num_workers)
+    train_data = next(iter(train_dataloader))
+    train_data_numpy = train_data.cpu().data.numpy()
+    r_train = enorm(train_data)
 
-    # Test dataset
-    n_test_samples = 1000
+    # Plot generated data correlation matrix
+    train_corr = np.corrcoef(train_data_numpy, rowvar=False)
+    figname = '%s/train_corr.png'%(run_dir)
+    train_corr_hist, train_fit_sigma = plot_corr(train_corr, figname, title='$X^{train}$ Correlation')
+
+
+    # Test dataset (out of training set)
+    n_test_samples = n_train_samples #1000
     test_sampler = Sampler(dist_name=dist_name,
                            dim=dim, n_samples=n_test_samples, 
                            mu=mu, sigma=sigma, xlo=xlo, xhi=xhi)
@@ -147,7 +172,7 @@ def main():
     # Plot generated data correlation matrix
     test_corr = np.corrcoef(test_data_numpy, rowvar=False)
     figname = '%s/test_corr.png'%(run_dir)
-    test_corr_hist, test_fit_sigma = plot_corr(test_corr, figname, title='$X^{t}$ Correlation')
+    test_corr_hist, test_fit_sigma = plot_corr(test_corr, figname, title='$X^{test}$ Correlation')
 
     # Prepare test set component histograms
     test_hist_list = [None] * dim
@@ -186,11 +211,15 @@ def main():
     print("P-Value: %.04f\tDist-Value: %.04f"%(dval, pval))
 
     # Euclidean norm distributions
+    train_hist, _ = np.histogram(r_train, bins=redges)
     test_hist, _ = np.histogram(r_test, bins=redges)
     chi_hist, _ = np.histogram(chi2_sqrt, bins=redges)
+    train_hist = train_hist / float(n_train_samples)
     test_hist = test_hist / float(n_test_samples)
     chi_hist = chi_hist / float(n_test_samples)
    
+    #optimizer_G = torch.optim.SGD(generator.parameters(), lr=lr, momentum=0.9, weight_decay=decay)
+    #optimizer_D = torch.optim.SGD(discriminator.parameters(), lr=lr, momentum=0.9)
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(b1, b2), weight_decay=decay)
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
     #optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2), weight_decay=decay)
@@ -200,8 +229,12 @@ def main():
     # ----------
     g_l = []
     d_l = []
-    dval_i = []
-    pval_i = []
+    dval_train_i = []
+    pval_train_i = []
+    dval_test_i = []
+    pval_test_i = []
+    gr_fit_sigma_list = []
+    gt_fit_sigma_list = []
     gen_fit_sigma_list = []
     disc_g_mean = []
     disc_r_mean = []
@@ -352,7 +385,7 @@ def main():
 
         # Plot generated data correlation matrix
         gen_corr = np.corrcoef(gen_data_numpy, rowvar=False)
-        figname = '%s/corr_epoch%05i.png'%(samples_dir, epoch)
+        figname = '%s/corr_gen_epoch%05i.png'%(samples_dir, epoch)
         ctitle = '$X^{g}$ Correlation at Epoch %i'%epoch
         gen_corr_hist, gen_fit_sigma = plot_corr(corr=gen_corr,
                                                  figname=figname,
@@ -361,7 +394,32 @@ def main():
 
         gen_fit_sigma_list.append(gen_fit_sigma)
 
+        
+        # Plot generated data - train data correlation matrix
+        #gr_corr = corr2_coeff(gen_data_numpy.T, gen_data_numpy.T)
+        gr_corr = corr2_coeff(gen_data_numpy.T, train_data_numpy.T)
+        figname = '%s/corr_train_epoch%05i.png'%(samples_dir, epoch)
+        ctitle = '$X^{g}, X^{r}$ Correlation at Epoch %i'%epoch
+        gr_corr_hist, gr_fit_sigma = plot_corr(corr=gr_corr,
+                                               figname=figname,
+                                               title=ctitle,
+                                               comp_hist=train_corr_hist)
 
+        gr_fit_sigma_list.append(gr_fit_sigma)
+
+
+        # Plot generated data - test data correlation matrix
+        gt_corr = corr2_coeff(gen_data_numpy.T, test_data_numpy.T)
+        figname = '%s/corr_test_epoch%05i.png'%(samples_dir, epoch)
+        ctitle = '$X^{g}, X^{t}$ Correlation at Epoch %i'%epoch
+        gt_corr_hist, gt_fit_sigma = plot_corr(corr=gt_corr,
+                                               figname=figname,
+                                               title=ctitle,
+                                               comp_hist=test_corr_hist)
+
+        gt_fit_sigma_list.append(gt_fit_sigma)
+
+        
         # Euclidean norm calc and comparison
         r_gen_samps = enorm(gen_samples_samp)
         # Bin samples into normalized histogram
@@ -376,11 +434,14 @@ def main():
                            ylims=[0.0005, 1.0, True],
                            figname=figname)
       
-        # K-S test test btw test data and generated samples (r distribution)
-        dval, pval = stats.ks_2samp(r_test, r_gen_samps)
+        # K-S test test btw test/train data and generated samples (r distribution)
+        dval_test, pval_test = stats.ks_2samp(r_test, r_gen_samps)
+        dval_train, pval_train = stats.ks_2samp(r_train, r_gen_samps)
         
-        dval_i.append(dval)
-        pval_i.append(pval)
+        dval_test_i.append(dval_test)
+        pval_test_i.append(pval_test)
+        dval_train_i.append(dval_train)
+        pval_train_i.append(pval_train)
 
         print ("[Epoch %d/%d] \n"\
                "\tModel Losses: [D: %f] [G: %f] [p-val: %.02e]" % (epoch, 
@@ -410,15 +471,24 @@ def main():
                 'disc_loss' : ['D(x)', d_l],
                 'disc_r_mean' : ['D(x)', disc_r_mean],
                 'disc_g_mean' : ['1-D(G(z))', disc_g_mean],
-                'pvalues' : ['pvals', pval_i],
-                'dvalues' : ['dvals', dval_i],
+                'pvalues_test' : ['pvals', pval_test_i],
+                'dvalues_test' : ['dvals', dval_test_i],
+                'pvalues_train' : ['pvals', pval_train_i],
+                'dvalues_train' : ['dvals', dval_train_i],
                 'true_corr' : ['test_corr', test_corr],
                 'gen_corr' : ['gen_corr', gen_corr],
+                'train_xcorr' : ['train_corr_hist', train_corr_hist],
                 'true_xcorr' : ['test_corr_hist', test_corr_hist],
                 'gen_xcorr' : ['gen_corr_hist', gen_corr_hist],
+                'gr_xcorr' : ['gr_corr_hist', gr_corr_hist],
+                'gt_xcorr' : ['gt_corr_hist', gt_corr_hist],
+                'n_train_samples' : n_train_samples,
                 'n_test_samples' : n_test_samples,
                 'test_fit_sigma' : test_fit_sigma,
+                'train_fit_sigma' : train_fit_sigma,
                 'gen_fit_sigma' : ['gen_sigma' , gen_fit_sigma_list],
+                'gr_fit_sigma' : ['gr_sigma' , gr_fit_sigma_list],
+                'gt_fit_sigma' : ['gt_sigma' , gt_fit_sigma_list],
                }
 
     fjson = open(training_details_file, 'wb')
