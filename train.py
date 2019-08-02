@@ -82,7 +82,6 @@ def main():
     b2 = 0.9 #99
     decay = 2.5*1e-5
     n_skip_iter = 5
-    #n_skip_iter = 1
 
     # Wasserstein metric flag
     wass_metric = args.wass_metric
@@ -98,7 +97,8 @@ def main():
     # Run name suffix
     postfix = args.postfix
     if not postfix == "":
-        run_name = os.path.join(run_name, sep_und, postfix)
+        run_name = sep_und.join([run_name, postfix])
+        #run_name = os.path.join(run_name, sep_und, postfix)
 
     run_dir = os.path.join(RUNS_DIR, run_name)
     samples_dir = os.path.join(run_dir, 'samples')
@@ -161,7 +161,7 @@ def main():
 
 
     # Test dataset (out of training set)
-    n_test_samples = n_train_samples #1000
+    n_test_samples = n_train_samples
     test_sampler = Sampler(dist_name=dist_name,
                            dim=dim, n_samples=n_test_samples, 
                            mu=mu, sigma=sigma, xlo=xlo, xhi=xhi)
@@ -261,7 +261,6 @@ def main():
             
             # Sample random latent variables
             z_latent = sample_z(samples=real_samples.size()[0], dims=latent_dim, mu=0.0, sigma=latent_sigma)
-            #z_latent = sample_zu(samples=real_samples.size()[0], dims=latent_dim)
 
             # Generate a batch of samples
             gen_samples = generator(z_latent)
@@ -325,7 +324,6 @@ def main():
         n_samp = n_test_samples
 
         # Generate sample instances
-        #z_samp = sample_zu(samples=n_samp, dims=latent_dim)
         z_samp = sample_z(samples=n_samp, dims=latent_dim, mu=0.0, sigma=latent_sigma)
         gen_samples_samp = generator(z_samp)
 
@@ -396,7 +394,6 @@ def main():
 
         
         # Plot generated data - train data correlation matrix
-        #gr_corr = corr2_coeff(gen_data_numpy.T, gen_data_numpy.T)
         gr_corr = corr2_coeff(gen_data_numpy.T, train_data_numpy.T)
         figname = '%s/corr_train_epoch%05i.png'%(samples_dir, epoch)
         ctitle = '$X^{g}, X^{r}$ Correlation at Epoch %i'%epoch
