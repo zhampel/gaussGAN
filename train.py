@@ -98,7 +98,6 @@ def main():
     postfix = args.postfix
     if not postfix == "":
         run_name = sep_und.join([run_name, postfix])
-        #run_name = os.path.join(run_name, sep_und, postfix)
 
     run_dir = os.path.join(RUNS_DIR, run_name)
     samples_dir = os.path.join(run_dir, 'samples')
@@ -145,7 +144,7 @@ def main():
                                 num_workers=num_workers)
     
     # Sample from training set
-    n_train_samples = 100
+    n_train_samples = 1000
     train_dataloader = get_dataloader(dataset=dataset,
                                       batch_size=n_train_samples,
                                       train_set=True,
