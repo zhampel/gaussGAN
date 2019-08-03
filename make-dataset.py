@@ -4,6 +4,7 @@ try:
     import argparse
     import os
     import numpy as np
+    from scipy.linalg import block_diag
     from scipy.optimize import curve_fit
 
     import matplotlib
@@ -25,6 +26,7 @@ except ImportError as e:
     print(e)
     raise ImportError
 
+np.set_printoptions(threshold=np.nan)
 
 # Data type for pytables
 atom = tables.Float64Atom()
@@ -40,8 +42,12 @@ def main():
     parser = argparse.ArgumentParser(description="Dataset generation script")
     parser.add_argument("-b", "--n_batches", dest="n_batches", default=100, type=int, help="Number of batches")
     parser.add_argument("-n", "--n_samples", dest="n_samples", default=1024, type=int, help="Number of samples")
-    parser.add_argument("-d", "--dim_list", dest="dim_list", nargs='+', default=[1, 2, 3, 10, 100], type=int, help="Number of samples")
+    parser.add_argument("-d", "--dim_list", dest="dim_list", nargs='+', default=[8, 10, 50, 100, 1000], type=int, help="Number of samples")
     parser.add_argument("-s", "--dist_name", dest="dist_name", default='gauss', choices=sampler_list,  help="Sampling distribution name")
+    
+    parser.add_argument("-m", "--mu", dest="mu", default=0.0, type=float, help="Distribution means")
+    parser.add_argument("-c", "--sigma_list", dest="sigma_list", nargs=3, default=(1.0, 0.0, 1), help="Covariance defs: diag, off-diag, blocksize")
+    parser.add_argument("-p", "-–postfix", dest="postfix", default="", help="Suffix for data file name")
     args = parser.parse_args()
 
     # Make directory structure for this run
@@ -53,8 +59,15 @@ def main():
     dist_name = args.dist_name
 
     # Distribution parameters
-    mu = 0.0
-    sigma = 1.0
+    mu = args.mu
+    sigma_list = args.sigma_list
+    print(sigma_list)
+    sigma_val = float(sigma_list[0])
+    off_diag = float(sigma_list[1])
+    block_dim = int(sigma_list[2])
+    print(sigma_val)
+    print(off_diag)
+    print(block_dim)
     xlo = -1.5
     xhi = 1.5
 
@@ -82,11 +95,42 @@ def main():
 
         # Initialize histogram for dimensionality
         rhist, _ = np.histogram([], bins=redges)
+    
+        # Prepare covariance vars
+        assert block_dim <= dim and dim % block_dim == 0, \
+               "Block dimensions not good: {}. Must be equal to dim {} or multiple of dim.".format(block_dim, dim)
+        # Just elements adjacent to diag
+        if (block_dim == -1):
+            cov_block = np.eye(dim, dim, 1) + np.eye(dim, dim, -1)
+            cov_block *= off_diag
+            cov_block[np.eye(dim, dtype=bool)] = sigma_val
+            nblocks = 1
+        # Block diag structure
+        else:
+            cov_block = off_diag*np.ones((block_dim, block_dim))
+            cov_block[np.eye(cov_block.shape[0], dtype=bool)] = sigma_val
+            nblocks = int(dim/block_dim)
+
+        #print("Cov Block:")
+        #print(cov_block)
+        #print(nblocks)
+        sigma = block_diag(*([cov_block] * nblocks))
+        #print(sigma)
         
         sampler = Sampler(dist_name=dist_name, dim=dim, n_samples=n_samples, mu=mu, sigma=sigma, xlo=xlo, xhi=xhi)
 
         # Prepare file, earray to save generated data
-        data_file_name = '%s/data_%s_dim%i.h5'%(data_dir, dist_name, dim)
+        #data_file_name = '%s/data_%s_dim%i.h5'%(data_dir, dist_name, dim)
+        sep_und = '_'
+        file_name_comps = ['data', dist_name, '%s'%str(dim)]
+        file_name = sep_und.join(file_name_comps)
+        # Run name suffix
+        postfix = args.postfix
+        if not postfix == "":
+            file_name = sep_und.join([file_name, postfix])
+        data_file_name = '%s/%s.h5'%(data_dir, file_name)
+        print(data_file_name)
+
         data_file = tables.open_file(data_file_name, mode='w')
 
         meta_group = data_file.create_group(data_file.root, 'metadata')

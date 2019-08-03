@@ -121,9 +121,25 @@ def sample_z(samples=64, dims=10, mu=0.0, sigma=1.0, req_grad=False):
     Tensor = torch.cuda.FloatTensor
 
     # Sample noise as generator input, zn
-    z = Variable(Tensor(np.random.normal(mu, sigma, (samples, dims))), requires_grad=req_grad)
+    #z = Variable(Tensor(np.random.normal(mu, sigma, (samples, dims))), requires_grad=req_grad)
 
-    # Return components of latent space variable
+    # Check if mu, sigma are scalars
+    if np.isscalar(mu):
+        mu = mu*np.ones(dims)
+    if np.isscalar(sigma):
+        sigma = np.zeros((dims, dims))+np.diag(sigma*np.ones(dims))
+
+    assert dims == len(mu), \
+           "Mean vector must have length {} equal to data dimensions {}.".format(len(mu), dims)
+    assert dims == sigma.shape[0] and dims == sigma.shape[1], \
+           "Covariance matrix must have square shape {}x{} equal to data dimensions {}.".format(sigma.shape[0], sigma.shape[1], dims)
+        
+
+    # Generate multivariate normal sample batch
+    z_np = np.random.multivariate_normal(mu, sigma, (samples))
+    z = Variable(Tensor(z_np), requires_grad=req_grad)
+
+    # Return components
     return z
 
 
